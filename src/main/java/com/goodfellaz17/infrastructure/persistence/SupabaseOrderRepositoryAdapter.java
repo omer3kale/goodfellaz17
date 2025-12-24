@@ -24,14 +24,11 @@ import java.util.UUID;
 /**
  * Infrastructure Adapter - Supabase Order Repository.
  * 
- * Production implementation connecting to botzzz773.pro Supabase tables.
- * Uses REST API with PostgREST queries.
- * 
- * Activate with: SPRING_PROFILES_ACTIVE=prod
+ * Legacy Supabase implementation - DISABLED in prod (use Neon R2DBC).
+ * Only loads when profile "supabase" is active.
  */
 @Repository
-@Primary
-@Profile("prod")
+@Profile("supabase")  // Only load when supabase profile active (NOT in prod)
 public class SupabaseOrderRepositoryAdapter implements OrderRepositoryPort {
 
     private static final Logger log = LoggerFactory.getLogger(SupabaseOrderRepositoryAdapter.class);

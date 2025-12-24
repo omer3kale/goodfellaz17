@@ -5,6 +5,7 @@ import com.goodfellaz17.domain.model.OrderStatus;
 import com.goodfellaz17.domain.port.OrderRepositoryPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -16,10 +17,11 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Infrastructure Adapter - In-Memory Order Repository.
  * 
- * Development implementation of OrderRepositoryPort.
- * Production: Replace with SupabaseOrderRepositoryAdapter.
+ * Primary implementation of OrderRepositoryPort.
+ * Used in prod with Neon R2DBC for persistence.
  */
 @Repository
+@Primary
 public class InMemoryOrderRepository implements OrderRepositoryPort {
 
     private static final Logger log = LoggerFactory.getLogger(InMemoryOrderRepository.class);
