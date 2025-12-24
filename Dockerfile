@@ -20,4 +20,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=60s \
 # Run application (Render uses $PORT)
 EXPOSE 8080
 ENV JAVA_OPTS="-Xmx512m -Xms256m -XX:+UseContainerSupport"
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Dserver.port=${PORT:-8080} -jar app.jar"]
+ENV SPRING_PROFILES_ACTIVE=prod
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Dserver.port=${PORT:-8080} -Dspring.profiles.active=prod -jar app.jar"]
