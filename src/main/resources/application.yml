@@ -6,11 +6,11 @@ spring:
   application:
     name: goodfellaz17-provider
 
-  # Database - Uses NEON_* vars in prod, localhost fallback for dev
+  # Database - Uses NEON_* vars (REQUIRED in production)
   r2dbc:
-    url: r2dbc:postgresql://${NEON_HOST:localhost}:5432/${NEON_DB:goodfellaz17}?sslmode=${DB_SSL:disable}
-    username: ${NEON_USER:postgres}
-    password: ${NEON_PASSWORD:postgres}
+    url: r2dbc:postgresql://${NEON_HOST}:5432/${NEON_DB}?sslmode=require
+    username: ${NEON_USER}
+    password: ${NEON_PASSWORD}
     pool:
       initial-size: 5
       max-size: 20
