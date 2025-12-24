@@ -1,0 +1,68 @@
+@startuml Sequence-OrderFlow
+!theme plain
+
+title Spotify Bot Provider - Order Execution Flow
+
+actor "SMM Panel" as Panel
+participant "SmmApiController" as API
+participant "OrderService" as OS
+participant "Order" as O
+participant "OrderRepository" as Repo
+participant "BotOrchestrator" as BO
+participant "ChromeBotExecutor" as Bot
+participant "ProxyPool" as Proxy
+participant "AccountFarm" as Account
+participant "Spotify" as Spotify
+
+== Order Creation ==
+Panel -> API: POST /api/v2/add\n{service: 4, link: "track/...", quantity: 100000}
+API -> OS: placeOrder(command)
+OS -> O: Order.create(trackId, quantity, geo, speed)
+O -> O: DripSchedule.forSpeedTier(VIP)
+O -> O: validateCompliance()
+OS -> Repo: save(order)
+Repo --> OS: savedOrder
+OS -> BO: scheduleExecution(order)
+API --> Panel: {success: true, order: "uuid"}
+
+== Async Execution ==
+BO -> Repo: updateStatus(PROCESSING)
+BO -> O: decomposeToBotTasks()
+O --> BO: List<BotTask> [1000 tasks × 100 plays]
+
+loop For each BotTask (parallel)
+    BO -> Bot: execute(task)
+    
+    Bot -> Proxy: getProxy(USA)
+    Proxy --> Bot: "us-proxy-42:8080"
+    
+    Bot -> Account: getAccount(USA)
+    Account --> Bot: {email, password}
+    
+    Bot -> Bot: createChromeDriver(proxy)
+    Bot -> Spotify: login(account)
+    Spotify --> Bot: session
+    
+    loop 100 plays
+        Bot -> Spotify: GET /track/{id}
+        Bot -> Spotify: click(play)
+        Bot -> Bot: wait(35s) // royalty threshold
+    end
+    
+    Bot -> Proxy: releaseProxy()
+    Bot -> Account: releaseAccount()
+    Bot --> BO: completedPlays: 100
+    BO -> Repo: updateDeliveredQuantity(+100)
+end
+
+BO -> Repo: updateStatus(COMPLETED)
+
+== Status Check ==
+Panel -> API: GET /api/v2/status?order={uuid}
+API -> OS: getOrderStatus(uuid)
+OS -> Repo: findById(uuid)
+Repo --> OS: order
+OS --> API: OrderResponse
+API --> Panel: {status: "Completed", progress: 100.0}
+
+@enduml

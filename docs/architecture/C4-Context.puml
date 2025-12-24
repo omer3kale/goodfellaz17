@@ -1,0 +1,21 @@
+@startuml C4-Context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title Spotify Bot Provider - System Context Diagram
+
+Person(panel, "SMM Panel", "Reseller panel placing bulk orders")
+Person(artist, "Artist/Manager", "Promotes tracks via panels")
+
+System(botProvider, "Spotify Bot Provider", "Processes stream orders, manages bot execution, delivers plays")
+
+System_Ext(spotify, "Spotify", "Target streaming platform")
+System_Ext(supabase, "Supabase", "PostgreSQL database + realtime")
+System_Ext(proxies, "Residential Proxies", "BrightData/Oxylabs IP rotation")
+
+Rel(panel, botProvider, "POST /api/v2/add", "HTTPS/JSON")
+Rel(artist, panel, "Places order", "Web UI")
+Rel(botProvider, spotify, "Streams tracks", "Chrome/Selenium")
+Rel(botProvider, supabase, "Stores orders/tasks", "R2DBC")
+Rel(botProvider, proxies, "Routes traffic", "SOCKS5/HTTP")
+
+@enduml

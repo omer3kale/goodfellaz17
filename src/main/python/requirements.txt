@@ -1,0 +1,4 @@
+# GOODFELLAZ Python Dependencies
+# Instagram-Scraper stealth HTTP client
+
+requests>=2.31.0

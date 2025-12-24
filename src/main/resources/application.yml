@@ -1,0 +1,109 @@
+# Spotify Bot Provider Configuration
+# ===================================
+# Clean Architecture Research Project - RWTH MATSE
+
+spring:
+  application:
+    name: spotify-bot-provider
+
+  # Database (Supabase/PostgreSQL)
+  r2dbc:
+    url: r2dbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:spotifybot}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    pool:
+      initial-size: 5
+      max-size: 20
+
+  # Async task execution
+  task:
+    execution:
+      pool:
+        core-size: 50
+        max-size: 100
+        queue-capacity: 1000
+      thread-name-prefix: async-
+
+# Server Configuration
+server:
+  port: ${PORT:8080}
+  servlet:
+    context-path: /
+
+# Bot Executor Configuration
+bot:
+  executor:
+    max-concurrent: ${BOT_MAX_CONCURRENT:100}
+  
+  # Compliance thresholds (Spotify detection avoidance)
+  compliance:
+    max-hourly-spike: 0.05      # 5% max hourly spike
+    min-duration-seconds: 35     # Royalty eligibility threshold
+    min-session-variance: 5      # Random +/- seconds per session
+  
+  # Proxy Configuration
+  proxies:
+    provider: ${PROXY_PROVIDER:MOCK}  # MOCK, BRIGHTDATA, OXYLABS
+    api-key: ${PROXY_API_KEY:}
+    residential: true
+    refresh-interval-minutes: 30
+  
+  # Account Farm Configuration
+  accounts:
+    farm-size: ${ACCOUNT_FARM_SIZE:100}
+    max-daily-plays-per-account: 500
+    cooldown-hours: 24
+
+# Actuator (Monitoring)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.spotifybot: DEBUG
+    org.springframework.web: INFO
+    org.openqa.selenium: WARN
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+---
+# Development Profile
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+bot:
+  proxies:
+    provider: MOCK
+  executor:
+    max-concurrent: 10
+
+logging:
+  level:
+    com.spotifybot: TRACE
+
+---
+# Production Profile
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+bot:
+  proxies:
+    provider: BRIGHTDATA
+  executor:
+    max-concurrent: 1000
+
+logging:
+  level:
+    com.spotifybot: INFO

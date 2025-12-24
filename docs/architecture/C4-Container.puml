@@ -1,0 +1,31 @@
+@startuml C4-Container
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Spotify Bot Provider - Container Diagram
+
+Person(panel, "SMM Panel")
+
+System_Boundary(botProvider, "Spotify Bot Provider") {
+    Container(api, "REST API", "Spring Boot", "SMM Panel API v2 endpoints")
+    Container(orderService, "Order Service", "Java", "Order management use cases")
+    Container(orchestrator, "Bot Orchestrator", "Java", "Task decomposition & scheduling")
+    Container(executor, "Chrome Executor", "Selenium", "Browser automation")
+    Container(proxyPool, "Proxy Pool", "Caffeine Cache", "Residential IP rotation")
+    Container(accountFarm, "Account Farm", "Java", "Premium account management")
+}
+
+ContainerDb(db, "PostgreSQL", "Supabase", "Orders, tasks, accounts")
+System_Ext(spotify, "Spotify")
+System_Ext(proxies, "BrightData")
+
+Rel(panel, api, "HTTP/JSON")
+Rel(api, orderService, "Commands")
+Rel(orderService, orchestrator, "Schedule")
+Rel(orchestrator, executor, "Execute")
+Rel(executor, proxyPool, "Get proxy")
+Rel(executor, accountFarm, "Get account")
+Rel(executor, spotify, "Play track")
+Rel(orderService, db, "R2DBC")
+Rel(proxyPool, proxies, "Refresh")
+
+@enduml

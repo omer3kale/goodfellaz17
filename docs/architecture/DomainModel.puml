@@ -1,0 +1,107 @@
+@startuml DomainModel
+!theme plain
+
+title Spotify Bot Provider - Domain Model
+
+package "Order Aggregate" #LightBlue {
+    class Order <<Aggregate Root>> {
+        +id: UUID
+        +trackId: SpotifyTrackId
+        +totalQuantity: Quantity
+        +deliveredQuantity: Quantity
+        +geoTarget: GeoTarget
+        +speedTier: SpeedTier
+        +dripSchedule: DripSchedule
+        +status: OrderStatus
+        +createdAt: Instant
+        +completedAt: Instant
+        --
+        +create(): Order
+        +decomposeToBotTasks(): List<BotTask>
+        +recordDelivery(plays): void
+        +progressPercentage(): double
+    }
+    
+    class BotTask <<Entity>> {
+        +id: UUID
+        +orderId: UUID
+        +trackId: SpotifyTrackId
+        +targetPlays: int
+        +completedPlays: int
+        +status: BotTaskStatus
+        +proxyAddress: String
+        +accountEmail: String
+        --
+        +assignResources(): void
+        +start(): void
+        +recordPlay(): void
+        +fail(error): void
+    }
+    
+    class DripSchedule <<Value Object>> {
+        +totalDuration: Duration
+        +maxHourlySpikePercent: double
+        +playsPerBatch: int
+        +batchInterval: Duration
+        --
+        +forSpeedTier(): DripSchedule
+        +validateSpikeThreshold(): void
+        +calculateTaskCount(): int
+    }
+    
+    class SpotifyTrackId <<Value Object>> {
+        +value: String
+        --
+        +isValid(): boolean
+        +toUri(): String
+        +toUrl(): String
+    }
+    
+    class Quantity <<Value Object>> {
+        +value: int
+        --
+        +add(amount): Quantity
+        +subtract(amount): Quantity
+    }
+    
+    enum GeoTarget {
+        USA
+        EU
+        WORLDWIDE
+        GERMANY
+        UK
+    }
+    
+    enum SpeedTier {
+        SLOW
+        NORMAL
+        FAST
+        VIP
+    }
+    
+    enum OrderStatus {
+        PENDING
+        PROCESSING
+        PARTIAL
+        COMPLETED
+        CANCELLED
+        REFUNDED
+    }
+}
+
+Order "1" *-- "1" SpotifyTrackId
+Order "1" *-- "2" Quantity
+Order "1" *-- "1" DripSchedule
+Order "1" --> "1" GeoTarget
+Order "1" --> "1" SpeedTier
+Order "1" --> "1" OrderStatus
+Order "1" *-- "*" BotTask
+
+note right of Order
+  **Invariants:**
+  - Max 5% hourly spike
+  - Min 35s session duration
+  - Max 10M plays per order
+end note
+
+@enduml
