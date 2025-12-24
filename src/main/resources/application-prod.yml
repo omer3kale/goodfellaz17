@@ -1,23 +1,28 @@
 # ============================================
-# GOODFELLAZ - Production Configuration
+# GOODFELLAZ17 - Production Configuration
 # ============================================
 # Activate: SPRING_PROFILES_ACTIVE=prod
+# 
+# Database: Neon PostgreSQL (EU-Central-1 for Aachen latency)
+# MontiCore SMI: Symbol Tables + CoCos enabled
 
 spring:
   application:
-    name: goodfellaz-provider
+    name: goodfellaz17-provider
 
-  # Supabase R2DBC (botzzz773.pro database)
+  # Neon PostgreSQL R2DBC (EU-Central-1 for low latency)
+  # Migration: Supabase → Neon (pg_dump restore)
   r2dbc:
-    url: r2dbc:postgresql://${SUPABASE_HOST:db.supabase.co}:5432/${SUPABASE_DB:postgres}
-    username: ${SUPABASE_USER:postgres}
-    password: ${SUPABASE_PASSWORD}
+    url: r2dbc:postgresql://${NEON_HOST:ep-xxx.eu-central-1.aws.neon.tech}:5432/${NEON_DB:goodfellaz17}?sslmode=require
+    username: ${NEON_USER:goodfellaz17}
+    password: ${NEON_PASSWORD}
     pool:
-      initial-size: 10
-      max-size: 50
+      initial-size: 5
+      max-size: 20           # Neon connection pooling
       max-idle-time: 30m
+      max-create-connection-time: 30s
 
-  # JPA/Hibernate validation only (schema managed by Supabase)
+  # JPA/Hibernate validation only (schema managed externally)
   jpa:
     hibernate:
       ddl-auto: validate
@@ -32,11 +37,21 @@ spring:
       thread-name-prefix: bot-executor-
 
 # ============================================
-# Supabase Configuration
+# MontiCore SMI Configuration (Lehrstuhl A+)
 # ============================================
-supabase:
-  url: ${SUPABASE_URL:https://your-project.supabase.co}
-  key: ${SUPABASE_KEY:your-anon-key}
+goodfellaz17:
+  smi:
+    enabled: true
+    symboltable:
+      cache-size: 1000           # Service lookup cache
+      auto-populate: true        # Load services on startup
+    cocos:
+      order-quantity: true       # Min/max validation
+      spotify-drip: true         # 5% spike prevention
+      api-key-balance: true      # Balance check
+      track-url: true            # URL validation
+    prettyprinter:
+      enabled: true              # API documentation
 
 # ============================================
 # Bot Executor Configuration
@@ -61,13 +76,13 @@ arbitrage:
   rate-per-thousand: 0.50        # $0.50 per 1K plays
 
 # ============================================
-# Spring Actuator / Prometheus
+# Spring Actuator / Prometheus (Lehrstuhl Metrics)
 # ============================================
 management:
   endpoints:
     web:
       exposure:
-        include: health,metrics,prometheus,info
+        include: health,metrics,prometheus,info,cocos,symbols
       base-path: /actuator
   endpoint:
     health:
@@ -79,7 +94,7 @@ management:
       prometheus:
         enabled: true
     tags:
-      application: goodfellaz
+      application: goodfellaz17
     distribution:
       percentiles-histogram:
         http.server.requests: true
@@ -90,7 +105,9 @@ management:
 logging:
   level:
     root: INFO
-    com.spotifybot: INFO
+    com.goodfellaz17: INFO
+    com.goodfellaz17.symboltable: DEBUG
+    com.goodfellaz17.cocos: DEBUG
     org.springframework.web: WARN
     org.springframework.security: WARN
   pattern:

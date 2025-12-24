@@ -1,9 +1,9 @@
-# Render.com Blueprint - GOODFELLAZ SMM API
+# Render.com Blueprint - GOODFELLAZ17 SMM API
 # FREE tier: 750 hours/month, auto-sleep after 15min inactivity
 
 services:
   - type: web
-    name: goodfellaz-api
+    name: goodfellaz17-api
     runtime: docker
     dockerfilePath: ./Dockerfile
     region: oregon

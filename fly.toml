@@ -1,7 +1,7 @@
-# Fly.io Configuration - GOODFELLAZ SMM API
+# Fly.io Configuration - GOODFELLAZ17 SMM API
 # fly launch --now
 
-app = "goodfellaz-smm"
+app = "goodfellaz17-smm"
 primary_region = "iad"
 
 [build]

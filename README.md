@@ -1,8 +1,6 @@
-# Spotify Bot Provider
+# GOODFELLAZ17 Provider
 
-> **RWTH MATSE Research Project** - Clean Architecture implementation analyzing SMM panel streaming fraud and money laundering patterns (StreamingMafia case study).
-
-⚠️ **Disclaimer**: This is an academic research project for thesis purposes only. The code demonstrates architectural patterns used by streaming fraud services and is not intended for actual deployment.
+> **RWTH MATSE Research Project** - Clean Architecture SMM Panel API with Spring Boot 3.5, Supabase persistence, and Python stealth executor.
 
 ## 🏗️ Architecture Overview
 
@@ -16,15 +14,15 @@
 ├──────────────────┼──────────────────────────────────────────┤
 │  Domain          │  Order Aggregate, BotTask, DripSchedule  │
 ├──────────────────┼──────────────────────────────────────────┤
-│  Infrastructure  │  Chrome Executor, Proxy Pool, Supabase   │
+│  Infrastructure  │  Python Stealth, Proxy Pool, Supabase    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ## 📁 Project Structure
 
 ```
-spotify-bot-provider/
-├── src/main/java/com/spotifybot/
+goodfellaz17-provider/
+├── src/main/java/com/goodfellaz17/
 │   ├── domain/
 │   │   ├── model/           # Entities & Value Objects
 │   │   │   ├── Order.java           # Aggregate Root

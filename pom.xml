@@ -11,11 +11,11 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.spotifybot</groupId>
-    <artifactId>spotify-bot-provider</artifactId>
+    <groupId>com.goodfellaz17</groupId>
+    <artifactId>goodfellaz17-provider</artifactId>
     <version>1.0.0-SNAPSHOT</version>
-    <name>Spotify Bot Provider</name>
-    <description>SMM Panel API - Spring Boot 3.5</description>
+    <name>GoodfellaZ17 Provider</name>
+    <description>GOODFELLAZ17 SMM Panel API - Spring Boot 3.5</description>
 
     <properties>
         <java.version>17</java.version>
