@@ -169,6 +169,19 @@ public class HybridProxyStrategy implements ProxyStrategy {
     }
     
     @Override
+    public void release(ProxyLease lease) {
+        if (lease == null || lease.sourceName() == null) return;
+        
+        sources.stream()
+            .filter(s -> s.getName().equals(lease.sourceName()))
+            .findFirst()
+            .ifPresent(source -> {
+                source.release(lease);
+                log.debug("Released lease {} back to {}", lease.leaseId(), source.getName());
+            });
+    }
+    
+    @Override
     public List<ProxySource> getAvailableSources() {
         return sources.stream()
             .filter(ProxySource::isEnabled)

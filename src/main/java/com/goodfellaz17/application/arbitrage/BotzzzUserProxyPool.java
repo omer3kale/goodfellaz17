@@ -1,7 +1,5 @@
 package com.goodfellaz17.application.arbitrage;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.goodfellaz17.domain.model.GeoTarget;
 import com.goodfellaz17.infrastructure.user.TaskAssignment;
 import com.goodfellaz17.infrastructure.user.UserProxy;
@@ -10,17 +8,14 @@ import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
+import org.springframework.core.env.Environment;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.stream.StreamSupport;
 
 /**
  * Application Service - botzzz773.pro User Proxy Pool.
@@ -35,6 +30,14 @@ import java.util.stream.StreamSupport;
  * - User: 30% commission per task
  * 
  * Scale: 1000+ botzzz773.pro users = infinite capacity
+ * 
+ * PRODUCTION MODE:
+ * - Users register via WebSocket connection
+ * - No mock users, no external dependencies
+ * - Real users connect from botzzz773.pro panel
+ * 
+ * DEV MODE:
+ * - bootstrapMockUsers() creates fake users for testing
  */
 @Service
 public class BotzzzUserProxyPool {
@@ -45,9 +48,8 @@ public class BotzzzUserProxyPool {
     private final Map<String, UserProxy> allUsers = new ConcurrentHashMap<>();
     private final Map<UUID, TaskAssignment> pendingTasks = new ConcurrentHashMap<>();
     
-    private final WebClient supabaseClient;
     private final SimpMessagingTemplate websocket;
-    private final ObjectMapper objectMapper;
+    private final Environment environment;
 
     @Value("${arbitrage.commission-rate:0.30}")
     private double commissionRate;
@@ -56,66 +58,41 @@ public class BotzzzUserProxyPool {
     private int taskTimeoutSeconds;
 
     public BotzzzUserProxyPool(
-            @Value("${supabase.url:}") String supabaseUrl,
-            @Value("${supabase.key:}") String supabaseKey,
-            SimpMessagingTemplate websocket) {
-        
+            SimpMessagingTemplate websocket,
+            Environment environment) {
         this.websocket = websocket;
-        this.objectMapper = new ObjectMapper();
-        
-        if (supabaseUrl != null && !supabaseUrl.isEmpty()) {
-            this.supabaseClient = WebClient.builder()
-                    .baseUrl(supabaseUrl + "/rest/v1")
-                    .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + supabaseKey)
-                    .defaultHeader("apikey", supabaseKey)
-                    .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                    .build();
-        } else {
-            this.supabaseClient = null;
-            log.warn("Supabase not configured - using mock user pool");
-        }
+        this.environment = environment;
     }
 
     /**
-     * Bootstrap user farm from botzzz773.pro database.
+     * Bootstrap user farm.
      * 
-     * Your 1000+ panel users = FREE proxy farm.
+     * PRODUCTION: Starts empty, users register via WebSocket
+     * DEV: Creates mock users for testing
      */
     @PostConstruct
     public void bootstrapUserFarm() {
-        if (supabaseClient == null) {
+        if (isDevProfile()) {
             bootstrapMockUsers();
             return;
         }
-
-        try {
-            String response = supabaseClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/users")
-                            .queryParam("status", "eq.active")
-                            .queryParam("has_spotify", "eq.true")
-                            .queryParam("select", "id,ip_address,user_agent,country")
-                            .build())
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
-
-            JsonNode users = objectMapper.readTree(response);
-            StreamSupport.stream(users.spliterator(), false)
-                    .forEach(this::registerUserFromJson);
-
-            log.info("User farm bootstrapped: {} users available", availableUsers.size());
-
-        } catch (Exception e) {
-            log.error("Failed to bootstrap user farm: {}", e.getMessage());
-            bootstrapMockUsers();
-        }
+        
+        // Production: Start with empty pool
+        // Real users connect via WebSocket from botzzz773.pro panel
+        log.info("Production mode: User pool initialized empty, waiting for WebSocket connections");
     }
 
     /**
-     * Development: Mock users for testing
+     * Development ONLY: Mock users for testing.
+     * 
+     * Only runs when 'dev' profile is active.
      */
     private void bootstrapMockUsers() {
+        if (!isDevProfile()) {
+            log.warn("Attempted to bootstrap mock users in production - blocked");
+            return;
+        }
+        
         List<GeoTarget> geos = List.of(GeoTarget.USA, GeoTarget.EU, GeoTarget.WORLDWIDE);
         
         for (int i = 0; i < 100; i++) {
@@ -131,29 +108,11 @@ public class BotzzzUserProxyPool {
             availableUsers.add(user);
         }
         
-        log.info("Mock user farm created: {} users", availableUsers.size());
+        log.info("DEV MODE: Mock user farm created with {} users", availableUsers.size());
     }
-
-    private void registerUserFromJson(JsonNode node) {
-        try {
-            String country = node.has("country") ? node.get("country").asText() : "US";
-            GeoTarget geo = parseGeoTarget(country);
-            
-            UserProxy user = UserProxy.builder()
-                    .userId(node.get("id").asText())
-                    .ipAddress(node.get("ip_address").asText())
-                    .userAgent(node.has("user_agent") ? node.get("user_agent").asText() 
-                            : "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)")
-                    .geoTarget(geo)
-                    .hasSpotifyPremium(true)
-                    .build();
-            
-            allUsers.put(user.getId(), user);
-            availableUsers.add(user);
-            
-        } catch (Exception e) {
-            log.warn("Failed to parse user: {}", e.getMessage());
-        }
+    
+    private boolean isDevProfile() {
+        return Arrays.asList(environment.getActiveProfiles()).contains("dev");
     }
 
     private GeoTarget parseGeoTarget(String country) {

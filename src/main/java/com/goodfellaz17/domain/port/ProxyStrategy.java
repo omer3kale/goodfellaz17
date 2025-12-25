@@ -26,6 +26,11 @@ public interface ProxyStrategy {
     ProxyLease selectProxy(OrderContext ctx) throws NoCapacityException;
     
     /**
+     * Release a proxy lease back to its source.
+     */
+    void release(ProxyLease lease);
+    
+    /**
      * Get all registered proxy sources.
      */
     List<ProxySource> getSources();

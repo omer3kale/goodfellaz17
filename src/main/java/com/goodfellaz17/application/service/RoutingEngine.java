@@ -150,6 +150,16 @@ public class RoutingEngine {
     }
     
     /**
+     * Release a proxy lease back to the pool.
+     */
+    public void releaseLease(ProxyLease lease) {
+        if (lease != null) {
+            proxyStrategy.release(lease);
+            log.debug("Released lease {} from {}", lease.leaseId(), lease.sourceName());
+        }
+    }
+    
+    /**
      * Get aggregate stats for monitoring.
      */
     public ProxyStrategy.AggregateStats getStats() {

@@ -41,18 +41,40 @@ bot:
     min-duration-seconds: 35     # Royalty eligibility threshold
     min-session-variance: 5      # Random +/- seconds per session
   
-  # Proxy Configuration
-  proxies:
-    provider: ${PROXY_PROVIDER:MOCK}  # MOCK, BRIGHTDATA, OXYLABS
-    api-key: ${PROXY_API_KEY:}
-    residential: true
-    refresh-interval-minutes: 30
-  
   # Account Farm Configuration
   accounts:
     farm-size: ${ACCOUNT_FARM_SIZE:100}
     max-daily-plays-per-account: 500
     cooldown-hours: 24
+
+# Proxy Provider Configuration
+proxy:
+  # Health check settings
+  health:
+    enabled: true
+    interval-seconds: 60
+  
+  # BrightData Residential Proxies
+  brightdata:
+    enabled: ${BRIGHTDATA_ENABLED:false}
+    host: brd.superproxy.io
+    port: 22225
+    username: ${BRIGHTDATA_USER:}
+    password: ${BRIGHTDATA_PASSWORD:}
+    zone: ${BRIGHTDATA_ZONE:residential}
+  
+  # SOAX Residential Proxies
+  soax:
+    enabled: ${SOAX_ENABLED:false}
+    host: proxy.soax.com
+    port: 9000
+    username: ${SOAX_USER:}
+    password: ${SOAX_PASSWORD:}
+
+# User Arbitrage Configuration
+arbitrage:
+  commission-rate: 0.30        # 30% to users
+  task-timeout-seconds: 300    # 5 min task deadline
 
 # Actuator (Monitoring)
 management:
@@ -68,7 +90,7 @@ management:
 logging:
   level:
     root: INFO
-    com.spotifybot: DEBUG
+    com.goodfellaz17: DEBUG
     org.springframework.web: INFO
     org.openqa.selenium: WARN
   pattern:
@@ -81,15 +103,19 @@ spring:
     activate:
       on-profile: dev
 
+proxy:
+  brightdata:
+    enabled: false
+  soax:
+    enabled: false
+
 bot:
-  proxies:
-    provider: MOCK
   executor:
     max-concurrent: 10
 
 logging:
   level:
-    com.spotifybot: TRACE
+    com.goodfellaz17: TRACE
 
 ---
 # Production Profile
@@ -98,12 +124,16 @@ spring:
     activate:
       on-profile: prod
 
+proxy:
+  brightdata:
+    enabled: ${BRIGHTDATA_ENABLED:true}
+  soax:
+    enabled: ${SOAX_ENABLED:true}
+
 bot:
-  proxies:
-    provider: BRIGHTDATA
   executor:
     max-concurrent: 1000
 
 logging:
   level:
-    com.spotifybot: INFO
+    com.goodfellaz17: INFO

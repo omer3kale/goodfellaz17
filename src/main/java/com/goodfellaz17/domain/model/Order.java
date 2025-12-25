@@ -16,7 +16,8 @@ import java.util.UUID;
 public class Order {
 
     private final UUID id;
-    private final int serviceId;
+    private final String serviceId;      // e.g., "plays_usa", "followers_premium"
+    private final String serviceName;    // Human readable, e.g., "USA Plays Premium"
     private final String trackUrl;
     private final int quantity;
     private final GeoTarget geoTarget;
@@ -28,7 +29,8 @@ public class Order {
 
     private Order(Builder builder) {
         this.id = builder.id != null ? builder.id : UUID.randomUUID();
-        this.serviceId = builder.serviceId;
+        this.serviceId = builder.serviceId != null ? builder.serviceId : "plays_ww";
+        this.serviceName = builder.serviceName != null ? builder.serviceName : "Worldwide Plays";
         this.trackUrl = builder.trackUrl;
         this.quantity = builder.quantity;
         this.geoTarget = builder.geoTarget != null ? builder.geoTarget : GeoTarget.WORLDWIDE;
@@ -40,7 +42,8 @@ public class Order {
 
     public Order(UUID id, String trackUrl, int quantity, GeoTarget geoTarget, SpeedTier speedTier) {
         this.id = id;
-        this.serviceId = 1;
+        this.serviceId = "plays_ww";
+        this.serviceName = "Worldwide Plays";
         this.trackUrl = trackUrl;
         this.quantity = quantity;
         this.geoTarget = geoTarget;
@@ -141,7 +144,8 @@ public class Order {
 
     // Getters
     public UUID getId() { return id; }
-    public int getServiceId() { return serviceId; }
+    public String getServiceId() { return serviceId; }
+    public String getServiceName() { return serviceName; }
     public String getTrackUrl() { return trackUrl; }
     public int getQuantity() { return quantity; }
     public GeoTarget getGeoTarget() { return geoTarget; }
@@ -154,7 +158,8 @@ public class Order {
     // Builder
     public static class Builder {
         private UUID id;
-        private int serviceId = 1;
+        private String serviceId;
+        private String serviceName;
         private String trackUrl;
         private int quantity;
         private int delivered = 0;
@@ -163,7 +168,8 @@ public class Order {
         private OrderStatus status;
 
         public Builder id(UUID id) { this.id = id; return this; }
-        public Builder serviceId(int serviceId) { this.serviceId = serviceId; return this; }
+        public Builder serviceId(String serviceId) { this.serviceId = serviceId; return this; }
+        public Builder serviceName(String serviceName) { this.serviceName = serviceName; return this; }
         public Builder trackUrl(String trackUrl) { this.trackUrl = trackUrl; return this; }
         public Builder quantity(int quantity) { this.quantity = quantity; return this; }
         public Builder delivered(int delivered) { this.delivered = delivered; return this; }
