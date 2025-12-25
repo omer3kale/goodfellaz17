@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="GOODFELLAZ17 - Beşiktaş Ultra × Spotify Engine">
+    <meta name="theme-color" content="#000000">
+    
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/assets/icon-192.svg">
+    <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="/css/besiktas.css">
+    
+    <title>GOODFELLAZ17 - Spotify Engine</title>
+</head>
+<body>
+    <!-- ========== HEADER ========== -->
+    <header class="app-header">
+        <div class="header-container">
+            <a href="#" class="app-logo" onclick="navigateTo('landing'); return false;">
+                <img src="/assets/logo.svg" alt="GOODFELLAZ17" class="logo-img">
+                <span class="logo-text">GF17</span>
+            </a>
+            <nav class="app-nav">
+                <a href="#panel" class="nav-link" onclick="navigateTo('panel'); return false;">Panel</a>
+                <a href="#docs" class="nav-link" onclick="navigateTo('docs'); return false;">Docs</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- ========== MAIN CONTENT ========== -->
+    <main class="app-main">
+        
+        <!-- ===== VIEW: LANDING ===== -->
+        <section id="view-landing" class="view">
+            <!-- Hero -->
+            <div class="hero">
+                <div class="hero-content">
+                    <div class="hero-badge">BEŞIKTAŞ ULTRA</div>
+                    <h1 class="hero-title">GOODFELLAZ17</h1>
+                    <p class="hero-subtitle">Automated Spotify Growth Engine</p>
+                    <p class="hero-tagline">Stealth delivery. Zero detection. Maximum impact.</p>
+                    <div class="hero-actions">
+                        <button class="btn-primary" onclick="navigateTo('panel')">
+                            <span class="btn-icon">⚡</span> Open Panel
+                        </button>
+                        <button class="btn-secondary" onclick="navigateTo('docs')">
+                            <span class="btn-icon">📖</span> View Docs
+                        </button>
+                    </div>
+                </div>
+                <div class="hero-eagle">🦅</div>
+            </div>
+
+            <!-- Service Highlights -->
+            <div class="services-section">
+                <h2 class="section-title">What We Deliver</h2>
+                <div class="services-grid">
+                    <div class="card service-card">
+                        <div class="card-icon">▶️</div>
+                        <h3 class="card-title">Plays</h3>
+                        <p class="card-desc">Organic-pattern streaming with natural drip scheduling</p>
+                        <span class="badge badge-safe">DRIP SAFE</span>
+                    </div>
+                    <div class="card service-card">
+                        <div class="card-icon">👥</div>
+                        <h3 class="card-title">Listeners</h3>
+                        <p class="card-desc">Monthly listener boost with geo-targeted profiles</p>
+                        <span class="badge badge-premium">PREMIUM</span>
+                    </div>
+                    <div class="card service-card">
+                        <div class="card-icon">💾</div>
+                        <h3 class="card-title">Engagement</h3>
+                        <p class="card-desc">Saves, follows, and playlist adds from real accounts</p>
+                        <span class="badge badge-hybrid">HYBRID FARM</span>
+                    </div>
+                    <div class="card service-card">
+                        <div class="card-icon">🎵</div>
+                        <h3 class="card-title">Playlists</h3>
+                        <p class="card-desc">Curated placement and playlist follower growth</p>
+                        <span class="badge badge-elite">ELITE</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Identity Block -->
+            <div class="identity-section">
+                <div class="identity-content">
+                    <div class="identity-icon">🖤</div>
+                    <blockquote class="identity-quote">
+                        "We are Goodfellaz. Beşiktaş blood. We move in silence, deliver with precision, and never leave traces."
+                    </blockquote>
+                    <p class="identity-text">
+                        Born from the ultra culture of Çarşı, powered by engineering precision. 
+                        Our engine runs where others fear to code.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== VIEW: PANEL ===== -->
+        <section id="view-panel" class="view hidden">
+            <!-- Status Strip -->
+            <div class="panel-status">
+                <div class="status-indicator">
+                    <span class="status-dot online"></span>
+                    <span class="status-text">Engine Ready</span>
+                </div>
+                <div class="status-capacity">
+                    <span class="capacity-label">Daily Capacity:</span>
+                    <span class="capacity-value">~10M</span>
+                </div>
+            </div>
+
+            <div class="panel-container">
+                <!-- Category Sidebar -->
+                <div class="panel-sidebar">
+                    <h3 class="sidebar-title">Categories</h3>
+                    <div class="category-list" id="category-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Main Panel Area -->
+                <div class="panel-main">
+                    <!-- Service Options -->
+                    <div class="options-section">
+                        <h3 class="options-title">Service Options</h3>
+                        <div class="options-list" id="options-list">
+                            <p class="options-placeholder">← Select a category to see options</p>
+                        </div>
+                    </div>
+
+                    <!-- Order Inputs -->
+                    <div class="inputs-section">
+                        <h3 class="inputs-title">Request Details</h3>
+                        <div class="input-group">
+                            <label class="input-label" for="target-input">Target</label>
+                            <input type="text" id="target-input" class="input-field" 
+                                   placeholder="Spotify link, artist, or identifier...">
+                            <span class="input-hint">What should be affected</span>
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label" for="amount-input">Amount</label>
+                            <input type="number" id="amount-input" class="input-field" 
+                                   placeholder="10000" min="100">
+                            <span class="input-hint">How strong the effect should be</span>
+                        </div>
+                        <div class="impact-preview" id="impact-preview">
+                            📊 Select a service and enter details to see estimated impact
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="action-row">
+                        <button class="btn-primary btn-large" onclick="prepareRequest()">
+                            <span class="btn-icon">🚀</span> Prepare Request
+                        </button>
+                        <button class="btn-secondary" onclick="resetPanel()">
+                            Reset
+                        </button>
+                    </div>
+
+                    <!-- Request Preview -->
+                    <div class="preview-section" id="preview-section">
+                        <h3 class="preview-title">Request Preview</h3>
+                        <div class="preview-box" id="preview-box">
+                            <p class="preview-empty">Your prepared request will appear here</p>
+                        </div>
+                        <div class="preview-note">
+                            ⏳ Ready to send when backend wiring is complete
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== VIEW: DOCS ===== -->
+        <section id="view-docs" class="view hidden">
+            <div class="docs-container">
+                <h1 class="docs-title">Documentation</h1>
+
+                <!-- Overview -->
+                <div class="docs-section">
+                    <h2 class="docs-heading">Overview</h2>
+                    <ul class="docs-list">
+                        <li>The panel accepts service requests and routes them to an automated fulfillment engine</li>
+                        <li>All business logic (pricing, safety, routing) lives server-side — the frontend is just a control surface</li>
+                        <li>No authentication required in this version</li>
+                    </ul>
+                </div>
+
+                <!-- Request Shape -->
+                <div class="docs-section">
+                    <h2 class="docs-heading">Request Shape (Conceptual)</h2>
+                    <div class="docs-diagram">
+                        <div class="diagram-row">
+                            <span class="diagram-key">category</span>
+                            <span class="diagram-arrow">→</span>
+                            <span class="diagram-value">what type of effect is desired</span>
+                        </div>
+                        <div class="diagram-row">
+                            <span class="diagram-key">option</span>
+                            <span class="diagram-arrow">→</span>
+                            <span class="diagram-value">which flavor inside that category</span>
+                        </div>
+                        <div class="diagram-row">
+                            <span class="diagram-key">target</span>
+                            <span class="diagram-arrow">→</span>
+                            <span class="diagram-value">what should be affected</span>
+                        </div>
+                        <div class="diagram-row">
+                            <span class="diagram-key">amount</span>
+                            <span class="diagram-arrow">→</span>
+                            <span class="diagram-value">how strong the effect should be</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lifecycle -->
+                <div class="docs-section">
+                    <h2 class="docs-heading">Lifecycle</h2>
+                    <ol class="docs-steps">
+                        <li>
+                            <span class="step-number">1</span>
+                            <span class="step-text">User picks a service flavor and target in the Panel</span>
+                        </li>
+                        <li>
+                            <span class="step-number">2</span>
+                            <span class="step-text">Frontend packages this as a simple request object</span>
+                        </li>
+                        <li>
+                            <span class="step-number">3</span>
+                            <span class="step-text">Backend receives and decides:</span>
+                            <ul class="step-sub">
+                                <li>→ routing to appropriate farm</li>
+                                <li>→ safety checks (CoCos validation)</li>
+                                <li>→ fulfillment path (drip schedule, proxies)</li>
+                            </ul>
+                        </li>
+                    </ol>
+                </div>
+
+                <!-- Back Link -->
+                <div class="docs-nav">
+                    <a href="#panel" class="btn-secondary" onclick="navigateTo('panel'); return false;">
+                        ← Back to Panel
+                    </a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ========== FOOTER ========== -->
+    <footer class="app-footer">
+        <div class="footer-content">
+            <span class="footer-brand">🦅 GOODFELLAZ17</span>
+            <span class="footer-tagline">Beşiktaş Ultra × Spotify Engine</span>
+        </div>
+    </footer>
+
+    <!-- ========== SCRIPTS ========== -->
+    <script src="/js/app.js"></script>
+    <script>
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('SW registered:', reg.scope))
+                .catch(err => console.log('SW registration failed:', err));
+        }
+    </script>
+</body>
+</html>
