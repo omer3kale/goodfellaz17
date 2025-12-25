@@ -3,7 +3,7 @@ package com.goodfellaz17.presentation.api;
 import com.goodfellaz17.application.service.HybridBotOrchestrator;
 import com.goodfellaz17.application.service.RoutingEngine;
 import com.goodfellaz17.domain.model.*;
-import com.goodfellaz17.domain.port.OrderRepositoryPort;
+import com.goodfellaz17.infrastructure.persistence.OrderRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +19,8 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Order Controller - PWA order placement + status tracking.
  * 
+ * PRODUCTION: Saves orders to Neon PostgreSQL.
+ * 
  * Handles the complete order lifecycle:
  * 1. Create order → CoCo validation → Queue for delivery
  * 2. Track pending orders
@@ -32,15 +34,15 @@ public class OrderController {
     private static final Logger log = LoggerFactory.getLogger(OrderController.class);
 
     private final Optional<HybridBotOrchestrator> hybridOrchestrator;
-    private final Optional<OrderRepositoryPort> orderRepository;
+    private final OrderRepository orderRepository;
     private final RoutingEngine routingEngine;
     
-    // In-memory order tracking (production: use DB)
-    private final Map<UUID, Order> orders = new ConcurrentHashMap<>();
+    // In-memory cache (synced with DB)
+    private final Map<UUID, Order> ordersCache = new ConcurrentHashMap<>();
 
     public OrderController(
             Optional<HybridBotOrchestrator> hybridOrchestrator,
-            Optional<OrderRepositoryPort> orderRepository,
+            OrderRepository orderRepository,
             RoutingEngine routingEngine) {
         this.hybridOrchestrator = hybridOrchestrator;
         this.orderRepository = orderRepository;
@@ -49,10 +51,11 @@ public class OrderController {
 
     /**
      * Create new order - PWA order form submission.
+     * REAL: Saves to Neon PostgreSQL.
      */
     @PostMapping
     public ResponseEntity<OrderResponse> createOrder(@RequestBody CreateOrderRequest req) {
-        log.info("Order received: {} x{} {}", req.serviceId(), req.quantity(), req.geoTarget());
+        log.info("📦 Order received: {} x{} {}", req.serviceId(), req.quantity(), req.geoTarget());
 
         // Parse geo target
         GeoTarget geo = parseGeoTarget(req.geoTarget());
@@ -70,16 +73,24 @@ public class OrderController {
             .status(OrderStatus.PENDING)
             .build();
 
-        // Store order
-        orders.put(order.getId(), order);
+        // REAL: Save to Neon PostgreSQL
+        try {
+            orderRepository.save(order).block();
+            log.info("✅ Order saved to DB: {}", order.getId());
+        } catch (Exception e) {
+            log.error("❌ DB save failed, using cache: {}", e.getMessage());
+        }
+        
+        // Cache for fast lookups
+        ordersCache.put(order.getId(), order);
         
         // Queue for hybrid delivery
         if (hybridOrchestrator.isPresent()) {
             hybridOrchestrator.get().queueOrder(order);
-            log.info("Order queued for hybrid delivery: {}", order.getId());
+            log.info("🚀 Order queued for hybrid delivery: {}", order.getId());
         } else {
             order.startProcessing();
-            log.info("Order accepted (orchestrator not available): {}", order.getId());
+            log.info("⚠️ Order accepted (orchestrator not available): {}", order.getId());
         }
 
         // Get routing hint
@@ -99,11 +110,18 @@ public class OrderController {
     }
 
     /**
-     * Get order by ID.
+     * Get order by ID - checks DB first, then cache.
      */
     @GetMapping("/{orderId}")
     public ResponseEntity<OrderResponse> getOrder(@PathVariable UUID orderId) {
-        Order order = orders.get(orderId);
+        // Check cache first
+        Order order = ordersCache.get(orderId);
+        
+        // Fallback to DB
+        if (order == null) {
+            order = orderRepository.findById(orderId).block();
+        }
+        
         if (order == null) {
             return ResponseEntity.notFound().build();
         }
@@ -124,12 +142,24 @@ public class OrderController {
     }
 
     /**
-     * Get all pending orders.
+     * Get all pending orders from DB.
      */
     @GetMapping("/pending")
     public List<OrderResponse> getPendingOrders() {
-        return orders.values().stream()
-            .filter(o -> o.getStatus() == OrderStatus.PENDING || o.getStatus() == OrderStatus.PROCESSING)
+        // Get from DB
+        List<Order> pendingOrders = orderRepository.findByStatus(OrderStatus.PENDING)
+                .collectList().block();
+        List<Order> processingOrders = orderRepository.findByStatus(OrderStatus.PROCESSING)
+                .collectList().block();
+        
+        // Combine
+        if (pendingOrders == null) pendingOrders = List.of();
+        if (processingOrders == null) processingOrders = List.of();
+        
+        return java.util.stream.Stream.concat(
+                pendingOrders.stream(),
+                processingOrders.stream()
+            )
             .map(o -> new OrderResponse(
                 o.getId(),
                 o.getServiceId(),
@@ -145,11 +175,14 @@ public class OrderController {
     }
 
     /**
-     * Get all orders (paginated in production).
+     * Get all orders from DB (paginated in future).
      */
     @GetMapping
     public List<OrderResponse> getAllOrders() {
-        return orders.values().stream()
+        List<Order> orders = orderRepository.findAll().collectList().block();
+        if (orders == null) orders = List.of();
+        
+        return orders.stream()
             .map(o -> new OrderResponse(
                 o.getId(),
                 o.getServiceId(),

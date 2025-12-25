@@ -1,5 +1,10 @@
 package com.goodfellaz17.domain.model;
 
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Transient;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
+
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -8,24 +13,52 @@ import java.util.UUID;
 /**
  * Domain Aggregate Root - Order entity.
  * 
+ * R2DBC mapped to Neon PostgreSQL table: orders
+ * 
  * Encapsulates business rules for Spotify stream orders:
  * - Minimum 35s play duration for royalty eligibility
  * - Maximum 5% hourly spike to avoid detection
  * - Geo-targeted proxy/account selection
  */
+@Table("orders")
 public class Order {
 
-    private final UUID id;
-    private final String serviceId;      // e.g., "plays_usa", "followers_premium"
-    private final String serviceName;    // Human readable, e.g., "USA Plays Premium"
-    private final String trackUrl;
-    private final int quantity;
-    private final GeoTarget geoTarget;
-    private final SpeedTier speedTier;
+    @Id
+    private UUID id;
+    
+    @Column("service_id")
+    private String serviceId;      // e.g., "plays_usa", "followers_premium"
+    
+    @Column("service_name")
+    private String serviceName;    // Human readable, e.g., "USA Plays Premium"
+    
+    @Column("track_url")
+    private String trackUrl;
+    
+    private int quantity;
+    
+    @Column("geo_target")
+    private String geoTarget;
+    
+    @Column("speed_tier")
+    private String speedTier;
+    
     private int delivered;
-    private OrderStatus status;
-    private final Instant createdAt;
+    private String status;
+    
+    @Column("created_at")
+    private Instant createdAt;
+    
+    @Column("completed_at")
     private Instant completedAt;
+    
+    @Column("rate_per_thousand")
+    private Double ratePerThousand;
+
+    // Default constructor for R2DBC
+    public Order() {
+        this.createdAt = Instant.now();
+    }
 
     private Order(Builder builder) {
         this.id = builder.id != null ? builder.id : UUID.randomUUID();
@@ -33,10 +66,10 @@ public class Order {
         this.serviceName = builder.serviceName != null ? builder.serviceName : "Worldwide Plays";
         this.trackUrl = builder.trackUrl;
         this.quantity = builder.quantity;
-        this.geoTarget = builder.geoTarget != null ? builder.geoTarget : GeoTarget.WORLDWIDE;
-        this.speedTier = builder.speedTier != null ? builder.speedTier : SpeedTier.NORMAL;
+        this.geoTarget = builder.geoTarget != null ? builder.geoTarget.name() : "WORLDWIDE";
+        this.speedTier = builder.speedTier != null ? builder.speedTier.name() : "NORMAL";
         this.delivered = builder.delivered;
-        this.status = builder.status != null ? builder.status : OrderStatus.PENDING;
+        this.status = builder.status != null ? builder.status.name() : "PENDING";
         this.createdAt = Instant.now();
     }
 
@@ -46,10 +79,10 @@ public class Order {
         this.serviceName = "Worldwide Plays";
         this.trackUrl = trackUrl;
         this.quantity = quantity;
-        this.geoTarget = geoTarget;
-        this.speedTier = speedTier;
+        this.geoTarget = geoTarget != null ? geoTarget.name() : "WORLDWIDE";
+        this.speedTier = speedTier != null ? speedTier.name() : "NORMAL";
         this.delivered = 0;
-        this.status = OrderStatus.PENDING;
+        this.status = "PENDING";
         this.createdAt = Instant.now();
     }
 
@@ -62,25 +95,25 @@ public class Order {
     }
 
     public void startProcessing() {
-        if (this.status != OrderStatus.PENDING) {
+        if (!"PENDING".equals(this.status)) {
             throw new IllegalStateException("Order must be PENDING to start processing");
         }
-        this.status = OrderStatus.PROCESSING;
+        this.status = "PROCESSING";
     }
 
     public void addDelivered(int count) {
         this.delivered += count;
         if (this.delivered >= this.quantity) {
-            this.status = OrderStatus.COMPLETED;
+            this.status = "COMPLETED";
             this.completedAt = Instant.now();
         }
     }
 
     public void cancel() {
-        if (this.status == OrderStatus.COMPLETED) {
+        if ("COMPLETED".equals(this.status)) {
             throw new IllegalStateException("Cannot cancel completed order");
         }
-        this.status = OrderStatus.CANCELLED;
+        this.status = "CANCELLED";
     }
 
     public double getProgress() {
@@ -98,8 +131,9 @@ public class Order {
      * @return true if order respects Spotify rate limits
      */
     public boolean isSpotifyCompliant() {
+        SpeedTier tier = getSpeedTierEnum();
         // Calculate plays per hour based on speed tier
-        int deliveryHours = switch (speedTier) {
+        int deliveryHours = switch (tier) {
             case VIP -> 24;
             case FAST -> 48;
             case NORMAL -> 72;
@@ -148,12 +182,54 @@ public class Order {
     public String getServiceName() { return serviceName; }
     public String getTrackUrl() { return trackUrl; }
     public int getQuantity() { return quantity; }
-    public GeoTarget getGeoTarget() { return geoTarget; }
-    public SpeedTier getSpeedTier() { return speedTier; }
+    
+    public GeoTarget getGeoTarget() { 
+        if (geoTarget == null) return GeoTarget.WORLDWIDE;
+        try {
+            return GeoTarget.valueOf(geoTarget);
+        } catch (Exception e) {
+            return GeoTarget.WORLDWIDE;
+        }
+    }
+    
+    public SpeedTier getSpeedTierEnum() { 
+        if (speedTier == null) return SpeedTier.NORMAL;
+        try {
+            return SpeedTier.valueOf(speedTier);
+        } catch (Exception e) {
+            return SpeedTier.NORMAL;
+        }
+    }
+    
+    public SpeedTier getSpeedTier() { return getSpeedTierEnum(); }
+    
     public int getDelivered() { return delivered; }
-    public OrderStatus getStatus() { return status; }
+    
+    public OrderStatus getStatus() { 
+        if (status == null) return OrderStatus.PENDING;
+        try {
+            return OrderStatus.valueOf(status);
+        } catch (Exception e) {
+            return OrderStatus.PENDING;
+        }
+    }
+    
     public Instant getCreatedAt() { return createdAt; }
     public Instant getCompletedAt() { return completedAt; }
+    
+    // Setters for R2DBC
+    public void setId(UUID id) { this.id = id; }
+    public void setServiceId(String serviceId) { this.serviceId = serviceId; }
+    public void setServiceName(String serviceName) { this.serviceName = serviceName; }
+    public void setTrackUrl(String trackUrl) { this.trackUrl = trackUrl; }
+    public void setQuantity(int quantity) { this.quantity = quantity; }
+    public void setGeoTarget(String geoTarget) { this.geoTarget = geoTarget; }
+    public void setSpeedTier(String speedTier) { this.speedTier = speedTier; }
+    public void setDelivered(int delivered) { this.delivered = delivered; }
+    public void setStatus(String status) { this.status = status; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public void setCompletedAt(Instant completedAt) { this.completedAt = completedAt; }
+    public void setRatePerThousand(Double ratePerThousand) { this.ratePerThousand = ratePerThousand; }
 
     // Builder
     public static class Builder {
@@ -180,5 +256,11 @@ public class Order {
         public Order build() {
             return new Order(this);
         }
+    }
+    
+    // For backwards compatibility in tests
+    @Transient
+    public DripSchedule calculateDripSchedule() {
+        return DripSchedule.forSpeedTier(getSpeedTierEnum(), quantity);
     }
 }
