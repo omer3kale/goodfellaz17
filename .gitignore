@@ -44,7 +44,33 @@ dist/
 *.pem
 *.key
 
+# ============================================
+# MARKETPLACE EXCLUSIONS (Script Sale Ready)
+# ============================================
+# Production deployment configs (contain env vars)
+render.yaml
+fly.toml
+docker-compose.yml
+
+# Temp scripts
+cleanup.sh
+*.sh.bak
+
+# Private configs
+.neon/
+.render/
+.fly/
+
+# IDE cache
+.cache/
+node_modules/
+
 # Test outputs
 test-results/
 coverage/
 .vercel
+
+# Marketplace builds
+*.zip
+*.war
+dist/

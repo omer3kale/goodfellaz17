@@ -1,20 +1,84 @@
-# GOODFELLAZ17 Provider
+# 🎵 Spotify SMM Panel - GOODFELLAZ17
 
-> **RWTH MATSE Research Project** - Clean Architecture SMM Panel API with Spring Boot 3.5, Supabase persistence, and Python stealth executor.
+[![Build](https://img.shields.io/github/actions/workflow/status/goodfellaz17/spotify-smm/ci.yml?style=flat-square)](https://github.com/goodfellaz17/spotify-smm/actions)
+[![License](https://img.shields.io/badge/license-Commercial-blue?style=flat-square)](LICENSE.txt)
+[![Java](https://img.shields.io/badge/Java-17+-orange?style=flat-square)](https://openjdk.org/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-brightgreen?style=flat-square)](https://spring.io/projects/spring-boot)
+
+> **Production-Ready SMM Panel** - 9 Spotify Services, PWA Dashboard, 56 Tests, Render 1-Click Deploy
+
+![Demo Dashboard](assets/screenshots/dashboard.png)
+
+## 🔥 LIVE DEMO
+
+**Try Now:** [https://goodfellaz17.onrender.com](https://goodfellaz17.onrender.com)
+
+```bash
+# Get services
+curl -X POST https://goodfellaz17.onrender.com/api/v2 -d "key=demo&action=services"
+
+# Place order
+curl -X POST https://goodfellaz17.onrender.com/api/v2 \
+  -d "key=demo&action=add&service=1&link=https://open.spotify.com/track/xxx&quantity=1000"
+```
+
+## 💰 Services & Pricing
+
+| ID | Service | Rate/1k | Min | Max |
+|----|---------|---------|-----|-----|
+| 1 | Spotify Plays Worldwide | $0.50 | 100 | 10M |
+| 2 | Spotify Plays USA | $0.90 | 100 | 5M |
+| 3 | Monthly Listeners USA | $1.90 | 500 | 1M |
+| 4 | Monthly Listeners Global | $1.50 | 500 | 2M |
+| 5 | Spotify Followers | $2.00 | 100 | 500K |
+| 6 | Spotify Saves | $1.00 | 100 | 1M |
+| 7 | Playlist Followers | $1.50 | 100 | 500K |
+| 10 | Plays Drip Feed (24h) | $0.60 | 1K | 1M |
+| 11 | Monthly Drip USA (30d) | $2.50 | 1K | 500K |
+
+## 🚀 Quick Start
+
+### 1-Click Deploy (Render.com - FREE)
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+
+```bash
+# Environment variables needed:
+SPRING_PROFILES_ACTIVE=prod
+NEON_HOST=your-db.neon.tech
+NEON_USER=your_user
+NEON_PASSWORD=your_password
+```
+
+### Docker (Local)
+
+```bash
+docker-compose -f docker-compose.demo.yml up
+# → http://localhost:8080
+```
+
+### Maven (Development)
+
+```bash
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
+mvn test  # 56 tests passing
+```
 
 ## 🏗️ Architecture Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                   CLEAN ARCHITECTURE                        │
+│              MONTICORE SMI ARCHITECTURE                     │
 ├─────────────────────────────────────────────────────────────┤
-│  Presentation    │  REST API v2 (SMM Panel Spec)            │
+│  Presentation    │  REST API v2 + PWA Dashboard             │
+├──────────────────┼──────────────────────────────────────────┤
+│  MontiCore SMI   │  SymbolTable, CoCos, Visitors            │
 ├──────────────────┼──────────────────────────────────────────┤
 │  Application     │  OrderService, BotOrchestrator           │
 ├──────────────────┼──────────────────────────────────────────┤
 │  Domain          │  Order Aggregate, BotTask, DripSchedule  │
 ├──────────────────┼──────────────────────────────────────────┤
-│  Infrastructure  │  Python Stealth, Proxy Pool, Supabase    │
+│  Infrastructure  │  R2DBC PostgreSQL, Proxy Pool            │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -23,74 +87,37 @@
 ```
 goodfellaz17-provider/
 ├── src/main/java/com/goodfellaz17/
+│   ├── symboltable/         # MontiCore Symbol Tables
+│   │   ├── SmmSymbol.java           # Service symbols
+│   │   ├── SmmSymbolTableFactory.java
+│   │   └── SmmScope.java            # Scoping
+│   ├── cocos/               # Context Conditions
+│   │   ├── OrderQuantityCoCo.java   # Min/max validation
+│   │   ├── SpotifyDripRateCoCo.java # Anti-spike
+│   │   └── CoCoCollector.java       # Error collection
+│   ├── visitor/             # Visitor Pattern
+│   │   ├── SmmVisitor.java
+│   │   └── DelegatorVisitor.java
+│   ├── prettyprinter/       # API Documentation
+│   │   └── SmmPrettyPrinter.java
 │   ├── domain/
 │   │   ├── model/           # Entities & Value Objects
-│   │   │   ├── Order.java           # Aggregate Root
-│   │   │   ├── BotTask.java         # Execution unit
-│   │   │   ├── DripSchedule.java    # Anti-detection timing
-│   │   │   ├── SpotifyTrackId.java  # Track identifier VO
-│   │   │   └── ...
 │   │   └── port/            # Domain Interfaces
-│   │       ├── OrderRepositoryPort.java
-│   │       ├── BotExecutorPort.java
-│   │       ├── ProxyPoolPort.java
-│   │       └── AccountFarmPort.java
-│   │
 │   ├── application/
-│   │   ├── service/         # Use Cases
-│   │   │   ├── OrderService.java
-│   │   │   └── BotOrchestratorService.java
-│   │   ├── command/         # Input DTOs
-│   │   └── response/        # Output DTOs
-│   │
+│   │   └── service/         # Use Cases
 │   ├── infrastructure/
-│   │   ├── persistence/     # Database Adapters
-│   │   ├── bot/             # Chrome Automation
-│   │   ├── proxy/           # Residential Proxy Pool
-│   │   ├── account/         # Premium Account Farm
+│   │   ├── persistence/     # R2DBC Adapters
+│   │   ├── bot/             # Stealth Execution
 │   │   └── config/          # Spring Configuration
-│   │
 │   └── presentation/
 │       ├── api/             # REST Controllers
-│       └── dto/             # API Request/Response
-│
-├── docs/architecture/       # PlantUML Diagrams
-├── scripts/                 # Database migrations
-├── docker-compose.yml       # Local dev environment
-└── pom.xml                  # Maven dependencies
-```
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Java 21+
-- Maven 3.9+
-- Docker & Docker Compose (for local dev)
-
-### Development Setup
-
-```bash
-# Clone repository
-git clone <repository-url>
-cd spotify-bot-provider
-
-# Start infrastructure (PostgreSQL, Selenium Grid)
-docker-compose up -d postgres selenium-hub chrome
-
-# Run application
-./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
-
-# API available at http://localhost:8080/api/v2
-```
-
-### Docker Deployment
-
-```bash
-# Build and run everything
-docker-compose up --build
-
-# Scale Chrome workers
-docker-compose up --scale chrome=10
+│       └── dto/             # API DTOs
+├── src/main/resources/static/  # PWA Dashboard
+├── docs/                    # Documentation
+│   ├── buyer/               # Buyer guides
+│   └── architecture/        # PlantUML diagrams
+├── dist/                    # Marketplace package
+└── pom.xml
 ```
 
 ## 📡 API Endpoints (SMM Panel v2 Spec)

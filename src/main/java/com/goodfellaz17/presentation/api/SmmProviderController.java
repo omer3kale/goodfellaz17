@@ -1,6 +1,5 @@
 package com.goodfellaz17.presentation.api;
 
-import com.goodfellaz17.cocos.CoCoCollector;
 import com.goodfellaz17.cocos.CoCoViolationException;
 import com.goodfellaz17.cocos.order.OrderCoCoChecker;
 import com.goodfellaz17.cocos.order.OrderContext;
