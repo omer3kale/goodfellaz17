@@ -29,7 +29,6 @@ public abstract class DelegatorVisitor<T> implements SymbolVisitor<T> {
     }
     
     @Override
-    @SuppressWarnings("unchecked")
     public void setRealThis(Visitor<T> realThis) {
         this.realThis = (SymbolVisitor<T>) realThis;
     }

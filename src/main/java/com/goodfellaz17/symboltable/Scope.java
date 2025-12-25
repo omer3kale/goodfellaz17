@@ -57,7 +57,6 @@ public class Scope {
      * Resolve a symbol locally (no parent lookup).
      * Manual Ch.9.5: resolveLocally checks only this scope.
      */
-    @SuppressWarnings("unchecked")
     public <S extends Symbol> Optional<S> resolveLocally(String name, SymbolKind kind) {
         SymbolKey key = new SymbolKey(name, kind);
         return Optional.ofNullable((S) localSymbols.get(key));
@@ -67,7 +66,6 @@ public class Scope {
      * Resolve a symbol with hierarchical lookup (local → parent).
      * Manual Ch.9.5: resolve() delegates to parent if not found locally.
      */
-    @SuppressWarnings("unchecked")
     public <S extends Symbol> Optional<S> resolve(String name, SymbolKind kind) {
         Optional<S> local = resolveLocally(name, kind);
         
@@ -87,7 +85,6 @@ public class Scope {
      * Resolve multiple symbols of a kind locally.
      * Manual Ch.9.5: resolveManyLocally returns all matching symbols.
      */
-    @SuppressWarnings("unchecked")
     public <S extends Symbol> List<S> resolveManyLocally(SymbolKind kind) {
         return localSymbols.values().stream()
                 .filter(s -> s.getKind() == kind)
@@ -98,7 +95,6 @@ public class Scope {
     /**
      * Resolve multiple symbols hierarchically.
      */
-    @SuppressWarnings("unchecked")
     public <S extends Symbol> List<S> resolveMany(SymbolKind kind) {
         List<S> result = new ArrayList<>(resolveManyLocally(kind));
         

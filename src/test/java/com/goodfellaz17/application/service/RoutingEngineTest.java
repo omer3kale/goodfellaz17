@@ -4,7 +4,6 @@ import com.goodfellaz17.domain.exception.NoCapacityException;
 import com.goodfellaz17.domain.model.*;
 import com.goodfellaz17.domain.port.ProxySource;
 import com.goodfellaz17.domain.port.ProxyStrategy;
-import com.goodfellaz17.infrastructure.proxy.HybridProxyStrategy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

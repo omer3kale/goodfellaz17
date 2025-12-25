@@ -25,7 +25,6 @@ public class OrderPrettyPrinter implements SymbolVisitor<String> {
     }
     
     @Override
-    @SuppressWarnings("unchecked")
     public void setRealThis(Visitor<String> realThis) {
         this.realThis = (SymbolVisitor<String>) realThis;
     }

@@ -172,7 +172,6 @@ public class SpotifyAuthController {
     /**
      * Exchange authorization code for tokens.
      */
-    @SuppressWarnings("unchecked")
     private Map<String, Object> exchangeCodeForTokens(String code) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
@@ -185,8 +184,8 @@ public class SpotifyAuthController {
 
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
 
-        ResponseEntity<Map> response = restTemplate.postForEntity(
-                SPOTIFY_TOKEN_URL, request, Map.class
+        ResponseEntity<Map<String, Object>> response = restTemplate.postForEntity(
+                SPOTIFY_TOKEN_URL, request, (Class<Map<String, Object>>)(Class<?>)Map.class
         );
 
         if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
@@ -199,7 +198,6 @@ public class SpotifyAuthController {
     /**
      * Refresh access token using refresh token.
      */
-    @SuppressWarnings("unchecked")
     public Map<String, Object> refreshAccessToken(String refreshToken) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
@@ -211,8 +209,8 @@ public class SpotifyAuthController {
 
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
 
-        ResponseEntity<Map> response = restTemplate.postForEntity(
-                SPOTIFY_TOKEN_URL, request, Map.class
+        ResponseEntity<Map<String, Object>> response = restTemplate.postForEntity(
+                SPOTIFY_TOKEN_URL, request, (Class<Map<String, Object>>)(Class<?>)Map.class
         );
 
         if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {

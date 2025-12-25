@@ -137,8 +137,8 @@ public class SpotifyTokenService {
 
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
 
-        ResponseEntity<Map> response = restTemplate.postForEntity(
-                SPOTIFY_TOKEN_URL, request, Map.class
+        ResponseEntity<Map<String, Object>> response = restTemplate.postForEntity(
+                SPOTIFY_TOKEN_URL, request, (Class<Map<String, Object>>)(Class<?>)Map.class
         );
 
         if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {

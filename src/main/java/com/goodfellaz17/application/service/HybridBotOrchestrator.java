@@ -5,7 +5,6 @@ import com.goodfellaz17.domain.model.*;
 import com.goodfellaz17.domain.port.BotExecutorPort;
 import com.goodfellaz17.domain.port.OrderRepositoryPort;
 import com.goodfellaz17.infrastructure.bot.PremiumAccountFarm;
-import com.goodfellaz17.infrastructure.proxy.UserProxySource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Primary;
@@ -14,8 +13,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
-import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -51,19 +48,16 @@ public class HybridBotOrchestrator {
     private final BotExecutorPort botExecutor;
     private final RoutingEngine routingEngine;
     private final PremiumAccountFarm accountFarm;
-    private final Optional<UserProxySource> userProxySource;
 
     public HybridBotOrchestrator(
             OrderRepositoryPort orderRepository,
             BotExecutorPort botExecutor,
             RoutingEngine routingEngine,
-            PremiumAccountFarm accountFarm,
-            Optional<UserProxySource> userProxySource) {
+            PremiumAccountFarm accountFarm) {
         this.orderRepository = orderRepository;
         this.botExecutor = botExecutor;
         this.routingEngine = routingEngine;
         this.accountFarm = accountFarm;
-        this.userProxySource = userProxySource;
     }
 
     /**

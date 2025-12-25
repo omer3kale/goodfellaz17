@@ -156,11 +156,14 @@ public class BotzzzUserProxyPool {
         pendingTasks.put(task.taskId(), task);
         
         // Send to user's browser via WebSocket
-        websocket.convertAndSendToUser(
-                user.getUserId(),
-                "/queue/tasks",
-                task
-        );
+        String userId = user.getUserId();
+        if (userId != null) {
+            websocket.convertAndSendToUser(
+                    userId,
+                    "/queue/tasks",
+                    task
+            );
+        }
         
         log.info("Task sent: userId={}, taskId={}, commission={}", 
                 user.getUserId(), task.taskId(), task.commission());

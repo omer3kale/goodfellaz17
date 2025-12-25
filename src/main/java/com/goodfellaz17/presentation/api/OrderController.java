@@ -75,8 +75,10 @@ public class OrderController {
 
         // REAL: Save to Neon PostgreSQL
         try {
-            orderRepository.save(order).block();
-            log.info("✅ Order saved to DB: {}", order.getId());
+            Order savedOrder = orderRepository.save(order).block();
+            if (savedOrder != null) {
+                log.info("✅ Order saved to DB: {}", savedOrder.getId());
+            }
         } catch (Exception e) {
             log.error("❌ DB save failed, using cache: {}", e.getMessage());
         }

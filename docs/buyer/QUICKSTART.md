@@ -1,19 +1,21 @@
 # 🚀 QUICKSTART - Spotify SMM Panel
 
-**Go from ZIP → $15k/day in 10 minutes**
+## Go from ZIP → $15k/day in 10 minutes
 
 ---
 
 ## ⚡ 1-CLICK DEPLOY (Render.com - FREE)
 
 ### Step 1: Create Render Account
-```
+
+```text
 1. Go to https://render.com
 2. Sign up with GitHub
 3. Click "New → Web Service"
 ```
 
 ### Step 2: Deploy JAR
+
 ```bash
 # Upload goodfellaz17-provider.jar
 # Runtime: Docker
@@ -21,7 +23,8 @@
 ```
 
 ### Step 3: Set Environment Variables
-```
+
+```bash
 SPRING_PROFILES_ACTIVE=prod
 NEON_HOST=your-db.neon.tech
 NEON_USER=your_user
@@ -30,7 +33,8 @@ PORT=8080
 ```
 
 ### Step 4: Visit Your Panel
-```
+
+```text
 https://your-app.onrender.com → PWA Dashboard installed!
 ```
 
@@ -39,6 +43,7 @@ https://your-app.onrender.com → PWA Dashboard installed!
 ## 🔧 LOCAL DEVELOPMENT
 
 ### Docker (Recommended)
+
 ```bash
 # Start with demo database
 docker-compose -f docker-compose.demo.yml up
@@ -49,6 +54,7 @@ docker-compose -f docker-compose.demo.yml up
 ```
 
 ### Maven (Development)
+
 ```bash
 # Run with dev profile
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
@@ -62,12 +68,14 @@ mvn test
 ## 🎯 FIRST API CALL
 
 ### Get Services
+
 ```bash
 curl https://your-app.onrender.com/api/v2 \
   -d "key=demo&action=services"
 ```
 
 **Response:**
+
 ```json
 {
   "services": [
@@ -79,12 +87,14 @@ curl https://your-app.onrender.com/api/v2 \
 ```
 
 ### Place Order
+
 ```bash
 curl https://your-app.onrender.com/api/v2 \
   -d "key=YOUR_API_KEY&action=add&service=1&link=https://open.spotify.com/track/xxx&quantity=1000"
 ```
 
 ### Check Balance
+
 ```bash
 curl https://your-app.onrender.com/api/v2 \
   -d "key=YOUR_API_KEY&action=balance"
@@ -95,11 +105,13 @@ curl https://your-app.onrender.com/api/v2 \
 ## 📱 PWA DASHBOARD
 
 The panel includes a **Progressive Web App** that works on:
+
 - ✅ iPhone (Add to Home Screen)
 - ✅ Android (Install prompt)
 - ✅ Desktop Chrome/Edge
 
-### Features:
+### Features
+
 - Real-time order tracking
 - Balance management
 - Service browser
@@ -109,12 +121,12 @@ The panel includes a **Progressive Web App** that works on:
 
 ## 💰 REVENUE CALCULATOR
 
-| Daily Orders | Avg Order | Margin | **Daily Profit** |
-|-------------|-----------|--------|------------------|
-| 100         | $10       | 50%    | **$500**         |
-| 500         | $15       | 50%    | **$3,750**       |
-| 1,000       | $20       | 50%    | **$10,000**      |
-| 2,000       | $25       | 50%    | **$25,000**      |
+| Daily Orders | Avg Order | Margin | Daily Profit |
+|--------------|-----------|--------|--------------|
+| 100          | $10       | 50%    | **$500**     |
+| 500          | $15       | 50%    | **$3,750**   |
+| 1,000        | $20       | 50%    | **$10,000**  |
+| 2,000        | $25       | 50%    | **$25,000**  |
 
 ---
 

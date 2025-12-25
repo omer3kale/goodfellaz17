@@ -58,7 +58,7 @@ public class SupabaseOrderRepositoryAdapter implements OrderRepositoryPort {
             
             webClient.post()
                     .uri("/orders")
-                    .bodyValue(json)
+                    .bodyValue(json != null ? json : "{}")
                     .retrieve()
                     .bodyToMono(String.class)
                     .block();
@@ -152,7 +152,7 @@ public class SupabaseOrderRepositoryAdapter implements OrderRepositoryPort {
                             .path("/orders")
                             .queryParam("id", "eq." + orderId.toString())
                             .build())
-                    .bodyValue(json)
+                    .bodyValue(json != null ? json : "{}")
                     .retrieve()
                     .bodyToMono(String.class)
                     .block();

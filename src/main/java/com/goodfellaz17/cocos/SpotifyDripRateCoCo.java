@@ -17,11 +17,6 @@ public class SpotifyDripRateCoCo implements CoCo<OrderContext> {
      */
     private static final double MAX_HOURLY_SPIKE = 0.05;  // 5%
     
-    /**
-     * Minimum delivery hours for drip feed.
-     */
-    private static final int MIN_DRIP_HOURS = 24;
-    
     @Override
     public void check(OrderContext context) throws CoCoViolationException {
         int quantity = context.quantity();
