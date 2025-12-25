@@ -2,7 +2,6 @@ package com.goodfellaz17.infrastructure.proxy;
 
 import com.goodfellaz17.domain.exception.NoCapacityException;
 import com.goodfellaz17.domain.model.*;
-import com.goodfellaz17.domain.port.ProxySource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

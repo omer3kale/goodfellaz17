@@ -24,7 +24,8 @@ class OrderTest {
         @DisplayName("should create order with valid parameters")
         void shouldCreateOrderWithValidParameters() {
             Order order = Order.builder()
-                    .serviceId(1)
+                    .serviceId("spotify_plays_usa")
+                    .serviceName("Spotify Plays USA")
                     .trackUrl("spotify:track:abc123")
                     .quantity(1000)
                     .geoTarget(GeoTarget.USA)
@@ -32,7 +33,7 @@ class OrderTest {
                     .build();
 
             assertNotNull(order.getId());
-            assertEquals(1, order.getServiceId());
+            assertEquals("spotify_plays_usa", order.getServiceId());
             assertEquals("spotify:track:abc123", order.getTrackUrl());
             assertEquals(1000, order.getQuantity());
             assertEquals(0, order.getDelivered());
@@ -44,8 +45,8 @@ class OrderTest {
         @Test
         @DisplayName("should generate UUID on creation")
         void shouldGenerateUuidOnCreation() {
-            Order order1 = Order.builder().serviceId(1).trackUrl("url").quantity(100).build();
-            Order order2 = Order.builder().serviceId(1).trackUrl("url").quantity(100).build();
+            Order order1 = Order.builder().serviceId("spotify_plays_ww").trackUrl("url").quantity(100).build();
+            Order order2 = Order.builder().serviceId("spotify_plays_ww").trackUrl("url").quantity(100).build();
 
             assertNotEquals(order1.getId(), order2.getId());
         }
@@ -59,7 +60,7 @@ class OrderTest {
         @DisplayName("should decompose order into bot tasks")
         void shouldDecomposeOrderIntoBotTasks() {
             Order order = Order.builder()
-                    .serviceId(1)
+                    .serviceId("spotify_plays_usa")
                     .trackUrl("spotify:track:abc123")
                     .quantity(100)
                     .geoTarget(GeoTarget.USA)
@@ -81,7 +82,7 @@ class OrderTest {
         @Test
         @DisplayName("should transition from PENDING to PROCESSING")
         void shouldTransitionToProcessing() {
-            Order order = Order.builder().serviceId(1).trackUrl("url").quantity(100).build();
+            Order order = Order.builder().serviceId("spotify_plays_ww").trackUrl("url").quantity(100).build();
             
             assertEquals(OrderStatus.PENDING, order.getStatus());
             
@@ -93,7 +94,7 @@ class OrderTest {
         @Test
         @DisplayName("should complete when delivered equals quantity")
         void shouldCompleteWhenDelivered() {
-            Order order = Order.builder().serviceId(1).trackUrl("url").quantity(10).build();
+            Order order = Order.builder().serviceId("spotify_plays_ww").trackUrl("url").quantity(10).build();
             order.startProcessing();
             
             order.addDelivered(10);
@@ -105,7 +106,7 @@ class OrderTest {
         @Test
         @DisplayName("should remain processing when partially delivered")
         void shouldRemainProcessingWhenPartial() {
-            Order order = Order.builder().serviceId(1).trackUrl("url").quantity(100).build();
+            Order order = Order.builder().serviceId("spotify_plays_ww").trackUrl("url").quantity(100).build();
             order.startProcessing();
             
             order.addDelivered(50);
@@ -123,7 +124,7 @@ class OrderTest {
         @DisplayName("should enforce 5% hourly spike limit")
         void shouldEnforce5PercentSpikeLimit() {
             Order order = Order.builder()
-                    .serviceId(1)
+                    .serviceId("spotify_plays_ww")
                     .trackUrl("url")
                     .quantity(1000)
                     .speedTier(SpeedTier.NORMAL)
@@ -138,12 +139,12 @@ class OrderTest {
         @DisplayName("VIP speed should have higher spike tolerance")
         void vipSpeedShouldHaveHigherTolerance() {
             Order normalOrder = Order.builder()
-                    .serviceId(1).trackUrl("url").quantity(10000)
+                    .serviceId("spotify_plays_ww").trackUrl("url").quantity(10000)
                     .speedTier(SpeedTier.NORMAL)
                     .build();
 
             Order vipOrder = Order.builder()
-                    .serviceId(1).trackUrl("url").quantity(10000)
+                    .serviceId("spotify_plays_premium").trackUrl("url").quantity(10000)
                     .speedTier(SpeedTier.VIP)
                     .build();
 
@@ -160,7 +161,7 @@ class OrderTest {
         @Test
         @DisplayName("should calculate remaining correctly")
         void shouldCalculateRemainingCorrectly() {
-            Order order = Order.builder().serviceId(1).trackUrl("url").quantity(100).build();
+            Order order = Order.builder().serviceId("spotify_plays_ww").trackUrl("url").quantity(100).build();
             order.startProcessing();
 
             assertEquals(100, order.getRemaining());
