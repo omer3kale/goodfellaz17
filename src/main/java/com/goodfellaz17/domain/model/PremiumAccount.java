@@ -9,6 +9,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  * 
  * Aged premium accounts for royalty-eligible streaming.
  * Daily play limit prevents account flagging.
+ * 
+ * OAuth tokens for Spotify Web API integration:
+ * - refreshToken: Long-lived (~1 year), used to get new access tokens
+ * - accessToken: Short-lived (1h), used for API calls
  */
 public class PremiumAccount {
     
@@ -22,6 +26,10 @@ public class PremiumAccount {
     private final GeoTarget region;
     private final AtomicInteger playsToday;
     private LocalDate lastPlayDate;
+    
+    // Spotify OAuth tokens
+    private String refreshToken;
+    private String accessToken;
 
     public PremiumAccount(UUID id, String email, String password, String cookies,
                           LocalDate premiumExpiry, GeoTarget region) {
@@ -64,4 +72,14 @@ public class PremiumAccount {
     public String getCookies() { return cookies; }
     public GeoTarget getRegion() { return region; }
     public int getPlaysToday() { return playsToday.get(); }
+    
+    // OAuth token getters/setters
+    public String getRefreshToken() { return refreshToken; }
+    public void setRefreshToken(String refreshToken) { this.refreshToken = refreshToken; }
+    public String getAccessToken() { return accessToken; }
+    public void setAccessToken(String accessToken) { this.accessToken = accessToken; }
+    
+    public boolean hasValidOAuth() {
+        return refreshToken != null && !refreshToken.isEmpty();
+    }
 }
