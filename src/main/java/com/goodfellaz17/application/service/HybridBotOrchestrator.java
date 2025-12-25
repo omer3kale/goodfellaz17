@@ -116,48 +116,12 @@ public class HybridBotOrchestrator {
                     order.getQuantity() - order.getDelivered()
             );
             
-            // Check if this is a user arbitrage route
-            if (lease.sourceName().equals("USER_ARBITRAGE") && userProxySource.isPresent()) {
-                executeUserArbitrageTask(order, lease);
-            } else {
-                executeBotTask(order, lease);
-            }
+            // All routes go through standard bot executor
+            executeBotTask(order, lease);
             
         } catch (NoCapacityException e) {
             log.warn("No proxy capacity for order {}: {}", order.getId(), e.getMessage());
             // Re-queue for retry
-            orderQueue.add(order);
-        }
-    }
-
-    /**
-     * Execute via User Arbitrage (zero-cost path).
-     */
-    private void executeUserArbitrageTask(Order order, ProxyLease lease) {
-        activeTasks.incrementAndGet();
-        
-        UserProxySource source = userProxySource.get();
-        
-        // Calculate plays for this batch (max 100 per task)
-        int remaining = order.getQuantity() - order.getDelivered();
-        int batchPlays = Math.min(remaining, 100);
-        
-        // Send task to user via WebSocket
-        source.executeTask(
-                lease,
-                order.getTrackUrl(),
-                batchPlays,
-                new BigDecimal("0.001")  // $0.001 per play base rate
-        );
-        
-        // Track progress (actual completion handled via WebSocket callback)
-        log.info("User arbitrage task dispatched: orderId={}, plays={}, leaseId={}",
-                order.getId(), batchPlays, lease.leaseId());
-        
-        activeTasks.decrementAndGet();
-        
-        // Re-queue if not complete (task completion updates order via callback)
-        if (remaining > batchPlays) {
             orderQueue.add(order);
         }
     }
@@ -182,10 +146,19 @@ public class HybridBotOrchestrator {
         
         SessionProfile profile = SessionProfile.randomHuman();
         
+        // Convert ProxyLease to Proxy for BotTask
+        Proxy proxy = Proxy.of(
+            lease.host(), 
+            lease.port(), 
+            null, null, 
+            GeoTarget.WORLDWIDE, 
+            false
+        );
+        
         BotTask task = BotTask.create(
                 order.getId(),
                 order.getTrackUrl(),
-                lease.proxy(),
+                proxy,
                 account,
                 profile
         );

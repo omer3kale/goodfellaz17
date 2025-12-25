@@ -104,9 +104,9 @@ public class ResidentialProxyPool {
     private void loadMockProxies() {
         // Development proxies (localhost simulation)
         for (int i = 0; i < 10; i++) {
-            usProxies.add(new Proxy("127.0.0.1", 8080 + i, null, null, GeoTarget.USA, false));
-            euProxies.add(new Proxy("127.0.0.1", 9080 + i, null, null, GeoTarget.EU, false));
-            wwProxies.add(new Proxy("127.0.0.1", 7080 + i, null, null, GeoTarget.WORLDWIDE, false));
+            usProxies.add(Proxy.of("127.0.0.1", 8080 + i, null, null, GeoTarget.USA, false));
+            euProxies.add(Proxy.of("127.0.0.1", 9080 + i, null, null, GeoTarget.EU, false));
+            wwProxies.add(Proxy.of("127.0.0.1", 7080 + i, null, null, GeoTarget.WORLDWIDE, false));
         }
     }
 

@@ -4,20 +4,17 @@ import com.goodfellaz17.application.arbitrage.BotzzzUserProxyPool;
 import com.goodfellaz17.domain.exception.NoCapacityException;
 import com.goodfellaz17.domain.model.*;
 import com.goodfellaz17.domain.port.ProxySource;
-import com.goodfellaz17.infrastructure.user.TaskAssignment;
 import com.goodfellaz17.infrastructure.user.UserProxy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
-import java.math.BigDecimal;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * ProxySource adapter for User Arbitrage Network.
@@ -40,8 +37,16 @@ public class UserProxySource implements ProxySource {
     private final BotzzzUserProxyPool userPool;
     private final Map<String, UserLease> activeLeases = new ConcurrentHashMap<>();
     
-    // Commission rate for users (30%)
-    private static final BigDecimal COMMISSION_RATE = new BigDecimal("0.30");
+    // Capacity tracking
+    private final AtomicInteger usedToday = new AtomicInteger(0);
+    private final AtomicLong lastAcquireTime = new AtomicLong(0);
+    private volatile long successCount = 0;
+    private volatile long failCount = 0;
+    
+    // Configuration (could be externalized)
+    private static final int CAPACITY_PER_DAY = 100000;  // 100k via user network
+    private static final double COST_PER_1K = 0.00;      // FREE - users pay themselves
+    private static final double RISK_LEVEL = 0.2;        // Low risk - real residential IPs
     
     public UserProxySource(BotzzzUserProxyPool userPool) {
         this.userPool = userPool;
@@ -49,78 +54,112 @@ public class UserProxySource implements ProxySource {
     
     @Override
     public String getName() {
-        return "USER_ARBITRAGE";
+        return "user";
     }
     
     @Override
-    public ServicePriority getPriority() {
-        // Highest priority - zero cost
-        return ServicePriority.ULTRA;
+    public String getDisplayName() {
+        return "User Arbitrage Network";
     }
     
     @Override
-    public boolean supportsGeo(GeoTarget geo) {
-        Map<GeoTarget, Long> usersByGeo = userPool.getUsersByGeo();
-        Long count = usersByGeo.getOrDefault(geo, 0L);
-        return count > 0;
+    public boolean isEnabled() {
+        // Enabled if we have at least 1 available user
+        return userPool != null && userPool.getAvailableUserCount() > 0;
     }
     
     @Override
-    public int getAvailableCapacity() {
-        return userPool.getAvailableUserCount();
+    public boolean supportsGeo(String country) {
+        if (country == null || "GLOBAL".equalsIgnoreCase(country)) {
+            return true;
+        }
+        // Check if we have users in this geo
+        try {
+            GeoTarget geo = GeoTarget.valueOf(country.toUpperCase());
+            Map<GeoTarget, Long> usersByGeo = userPool.getUsersByGeo();
+            Long count = usersByGeo.getOrDefault(geo, 0L);
+            return count > 0;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
     
     @Override
-    public Duration getTypicalLatency() {
-        // User execution via WebSocket = variable latency
-        return Duration.ofSeconds(30);
+    public boolean supportsProfile(RoutingProfile profile) {
+        // User network is good for everything except ultra-high-volume
+        // (we don't want to overwhelm users)
+        if (profile.priority() == ServicePriority.HIGH_VOLUME) {
+            return false;
+        }
+        return profile.allowsRisk(RISK_LEVEL);
     }
     
     @Override
-    public boolean isHealthy() {
-        // Healthy if we have at least 5 available users
-        return userPool.getAvailableUserCount() >= 5;
+    public int getEstimatedCapacityPerDay() {
+        return CAPACITY_PER_DAY;
     }
     
     @Override
-    public ProxyLease acquire(GeoTarget geo) throws NoCapacityException {
+    public int getRemainingCapacity() {
+        return Math.max(0, CAPACITY_PER_DAY - usedToday.get());
+    }
+    
+    @Override
+    public double getCostPer1k() {
+        return COST_PER_1K;  // FREE!
+    }
+    
+    @Override
+    public double getRiskLevel() {
+        return RISK_LEVEL;
+    }
+    
+    @Override
+    public boolean isPremium() {
+        return true;  // Real residential IPs = premium quality
+    }
+    
+    @Override
+    public ProxyLease acquire(OrderContext ctx) throws NoCapacityException {
+        // Check capacity
+        if (getRemainingCapacity() <= 0) {
+            throw new NoCapacityException(ctx.orderId(), ctx.serviceId(), getName());
+        }
+        
+        // Find available user for this geo
+        GeoTarget geo = parseGeo(ctx.targetCountry());
         Optional<UserProxy> userOpt = userPool.nextHealthyUser(geo);
         
         if (userOpt.isEmpty()) {
-            throw new NoCapacityException(
-                    "No available users for geo: " + geo,
-                    getName(),
-                    0
-            );
+            throw new NoCapacityException(ctx.orderId(), ctx.serviceId(), getName());
         }
         
         UserProxy user = userOpt.get();
-        String leaseId = UUID.randomUUID().toString();
-        Instant now = Instant.now();
         
-        // Create proxy representation for the user
-        Proxy proxy = Proxy.builder()
-                .id(user.getId())
-                .host(user.getIpAddress())
-                .port(0)  // No port - user executes directly
-                .country(geo.name())
-                .type(Proxy.ProxyType.HTTP)
-                .provider("USER_ARBITRAGE")
-                .build();
-        
-        ProxyLease lease = new ProxyLease(
-                leaseId,
-                proxy,
-                now,
-                now.plus(Duration.ofMinutes(5)),
-                getName()
+        // Create lease using user's IP as the "proxy"
+        ProxyLease lease = ProxyLease.create(
+            getName(),
+            user.getIpAddress(),
+            0,  // No port - user executes directly
+            ProxyLease.ProxyType.HTTP,
+            ctx.targetCountry() != null ? ctx.targetCountry() : "GLOBAL",
+            RISK_LEVEL,
+            300,  // 5 minute TTL
+            Map.of(
+                "user_id", user.getUserId(),
+                "order_id", ctx.orderId() != null ? ctx.orderId() : "",
+                "service", ctx.serviceName() != null ? ctx.serviceName() : "",
+                "source", "user_arbitrage"
+            )
         );
         
-        // Track lease with user reference
-        activeLeases.put(leaseId, new UserLease(lease, user));
+        // Track lease
+        activeLeases.put(lease.leaseId(), new UserLease(lease, user));
+        usedToday.incrementAndGet();
+        lastAcquireTime.set(System.currentTimeMillis());
         
         log.info("User lease acquired: leaseId={}, userId={}, geo={}", 
-                leaseId, user.getUserId(), geo);
+                lease.leaseId(), user.getUserId(), geo);
         
         return lease;
     }
@@ -131,64 +170,40 @@ public class UserProxySource implements ProxySource {
         
         if (userLease != null) {
             // User goes back to available pool automatically
-            // after task completion via BotzzzUserProxyPool.completeTask()
             log.debug("User lease released: leaseId={}", lease.leaseId());
+            successCount++;
         }
     }
     
-    /**
-     * Execute a task through a user.
-     * 
-     * This sends the task to the user's browser via WebSocket.
-     */
-    public void executeTask(ProxyLease lease, String trackUri, int plays, BigDecimal pricePerPlay) {
-        UserLease userLease = activeLeases.get(lease.leaseId());
-        
-        if (userLease == null) {
-            log.warn("No active lease found: {}", lease.leaseId());
-            return;
-        }
-        
-        // Calculate user commission (30% of price)
-        BigDecimal commission = pricePerPlay.multiply(COMMISSION_RATE)
-                .multiply(BigDecimal.valueOf(plays));
-        
-        TaskAssignment task = new TaskAssignment(
-                UUID.randomUUID(),
-                trackUri,
-                plays,
-                commission,
-                Instant.now().plusSeconds(300)  // 5 min deadline
+    @Override
+    public SourceStats getStats() {
+        double successRate = (successCount + failCount) > 0 
+            ? (double) successCount / (successCount + failCount) 
+            : 1.0;
+            
+        return new SourceStats(
+            getName(),
+            CAPACITY_PER_DAY,
+            usedToday.get(),
+            getRemainingCapacity(),
+            activeLeases.size(),
+            successRate,
+            lastAcquireTime.get()
         );
-        
-        userPool.sendTask(userLease.user(), task);
-        
-        log.info("Task dispatched to user: userId={}, plays={}, commission={}", 
-                userLease.user().getUserId(), plays, commission);
     }
     
-    /**
-     * Get statistics about user pool.
-     */
-    public UserPoolStats getStats() {
-        return new UserPoolStats(
-                userPool.getActiveUserCount(),
-                userPool.getAvailableUserCount(),
-                userPool.getBusyUserCount(),
-                activeLeases.size(),
-                userPool.getUsersByGeo()
-        );
+    // Helper to parse geo string to GeoTarget
+    private GeoTarget parseGeo(String country) {
+        if (country == null || "GLOBAL".equalsIgnoreCase(country)) {
+            return GeoTarget.WORLDWIDE;
+        }
+        try {
+            return GeoTarget.valueOf(country.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return GeoTarget.WORLDWIDE;
+        }
     }
     
     // Internal record linking lease to user
     private record UserLease(ProxyLease lease, UserProxy user) {}
-    
-    // Stats record
-    public record UserPoolStats(
-            int activeUsers,
-            int availableUsers,
-            int busyUsers,
-            int activeLeases,
-            Map<GeoTarget, Long> usersByGeo
-    ) {}
 }

@@ -195,7 +195,7 @@ public class SupabaseOrderRepositoryAdapter implements OrderRepositoryPort {
     private Order fromSupabaseJson(JsonNode node) {
         return Order.builder()
                 .id(UUID.fromString(node.get("id").asText()))
-                .serviceId(node.get("service_id").asInt())
+                .serviceId(String.valueOf(node.get("service_id").asInt()))
                 .trackUrl(node.get("track_url").asText())
                 .quantity(node.get("quantity").asInt())
                 .delivered(node.get("delivered").asInt())

@@ -1,6 +1,7 @@
 package com.goodfellaz17.domain.model;
 
 import java.time.Instant;
+import java.util.UUID;
 
 /**
  * Domain Value Object - Residential proxy configuration.
@@ -44,10 +45,12 @@ public class Proxy {
         return new Builder();
     }
     
-    // Getters
+    // Getters (both styles for compatibility)
     public String getId() { return id; }
     public String getHost() { return host; }
+    public String host() { return host; }  // Record-style accessor
     public int getPort() { return port; }
+    public int port() { return port; }     // Record-style accessor
     public String getUsername() { return username; }
     public String getPassword() { return password; }
     public String getCountry() { return country; }
@@ -57,6 +60,22 @@ public class Proxy {
     public int getFailureCount() { return failureCount; }
     public Instant getLastHealthCheck() { return lastHealthCheck; }
     public Instant getLastUsed() { return lastUsed; }
+    
+    /**
+     * Static factory for quick proxy creation.
+     */
+    public static Proxy of(String host, int port, String username, String password, GeoTarget geo, boolean premium) {
+        return builder()
+            .id(UUID.randomUUID().toString())
+            .host(host)
+            .port(port)
+            .username(username)
+            .password(password)
+            .country(geo != null ? geo.name() : "GLOBAL")
+            .type(ProxyType.HTTP)
+            .provider(premium ? "PREMIUM" : "STANDARD")
+            .build();
+    }
     
     // Health management
     public void markHealthy() {

@@ -245,6 +245,11 @@ class RoutingEngineTest {
         }
         
         @Override
+        public void release(ProxyLease lease) {
+            // No-op for mock
+        }
+        
+        @Override
         public AggregateStats getAggregateStats() {
             return new AggregateStats(1, 1, 100000, 100000, 0);
         }
