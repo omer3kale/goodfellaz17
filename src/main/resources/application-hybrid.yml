@@ -1,0 +1,114 @@
+# =============================================================================
+# GOODFELLAZ17 - Hybrid Proxy Configuration
+# =============================================================================
+# 
+# This config defines multiple proxy sources that the hybrid routing layer
+# can use based on service priority, geo requirements, and cost.
+#
+# IMPORTANT: All capacities and costs are OPERATOR-CONFIGURED, not fantasy numbers.
+# Tune these based on your actual infrastructure and budget.
+#
+# To activate: spring.profiles.active=hybrid (in addition to other profiles)
+# =============================================================================
+
+proxy:
+  hybrid:
+    # Master switch - set to true to enable hybrid routing
+    enabled: true
+    
+    sources:
+      # =========================================================================
+      # AWS/Cloud - Premium geo-targeted traffic
+      # =========================================================================
+      # Expects you to have EC2 instances or VPS running proxy services.
+      # Backend does NOT spawn instances - that's ops/DevOps.
+      aws:
+        enabled: false  # Enable once you have AWS proxy endpoints configured
+        capacity-per-day: 700000
+        cost-per-1k: 0.10
+        premium: true
+        geos:
+          - US
+          - UK
+          - DE
+          - CA
+        endpoints: []
+        # Example when configured:
+        # endpoints:
+        #   - host: aws-proxy-1.yourdomain.com
+        #     port: 1080
+        #     auth: ""
+        #   - host: aws-proxy-2.yourdomain.com
+        #     port: 1080
+        #     auth: ""
+      
+      # =========================================================================
+      # Tor - High-volume global traffic
+      # =========================================================================
+      # Assumes a Tor SOCKS proxy is running externally (not managed by Java).
+      # Install Tor: brew install tor && tor (macOS) or apt install tor (Linux)
+      tor:
+        enabled: false  # Enable once Tor is running locally
+        capacity-per-day: 1000000
+        cost-per-1k: 0.02
+        premium: false
+        geos:
+          - GLOBAL
+        socks-host: 127.0.0.1
+        socks-port: 9050
+      
+      # =========================================================================
+      # Mobile - Phone farm for elite mobile-like traffic
+      # =========================================================================
+      # DESIGNED TO WORK WITHOUT PHONES TODAY.
+      # When enabled=false or capacity=0, routing gracefully falls back.
+      # On Friday, update config to enable when 107 phones are ready.
+      mobile:
+        enabled: false
+        capacity-per-day: 0  # Set to planned_devices * max_per_device when ready
+        cost-per-1k: 0.30
+        premium: true
+        geos:
+          - US
+          - TR
+        gateway-endpoints: []
+        # Example when 107 phones are ready:
+        # enabled: true
+        # capacity-per-day: 214000  # 107 devices * 2000 streams/day
+        # gateway-endpoints:
+        #   - host: mobile-gateway.internal
+        #     port: 1080
+      
+      # =========================================================================
+      # P2P/Residential - Mid-tier natural traffic
+      # =========================================================================
+      # Points at commercial or P2P residential proxy provider.
+      p2p:
+        enabled: false  # Enable once you have a residential provider
+        capacity-per-day: 300000
+        cost-per-1k: 0.05
+        premium: false
+        geos:
+          - GLOBAL
+          - US
+          - UK
+        endpoints: []
+        # Example with a residential provider:
+        # endpoints:
+        #   - host: gate.residential-provider.com
+        #     port: 7000
+        #     username: your_username
+        #     password: your_password
+
+# =============================================================================
+# Phone Farm Configuration (for future 107-device setup)
+# =============================================================================
+# This section is for planning and monitoring, not required for backend to run.
+
+farm:
+  mobile:
+    planned-devices: 107
+    device-ids: []  # Fill on Friday: [phone-1, phone-2, ..., phone-107]
+    max-streams-per-device-per-day: 2000
+    gateway-host: mobile-gateway.internal
+    gateway-port: 1080
