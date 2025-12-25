@@ -10,15 +10,17 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
-# Copy application
-COPY --from=build /app/target/*.jar app.jar
+# Copy the specific JAR file (avoids glob issues)
+COPY --from=build /app/target/goodfellaz17-provider-1.0.0-SNAPSHOT.jar app.jar
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=60s \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-8080}/actuator/health || exit 1
 
-# Run application (Render uses $PORT)
-EXPOSE 8080
-ENV JAVA_OPTS="-Xmx512m -Xms256m -XX:+UseContainerSupport"
+# Run application
+EXPOSE 8080 10000
+ENV JAVA_OPTS="--add-opens java.base/java.util.concurrent.atomic=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED -Xmx512m -Xms256m -XX:+UseContainerSupport"
 ENV SPRING_PROFILES_ACTIVE=prod
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Dserver.port=${PORT:-8080} -Dspring.profiles.active=prod -jar app.jar"]
+
+# Use shell form so $PORT and $JAVA_OPTS expand properly
+CMD java $JAVA_OPTS -Dserver.port=${PORT:-8080} -jar app.jar
