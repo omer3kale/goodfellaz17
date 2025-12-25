@@ -102,16 +102,17 @@ public class HybridProxyProperties {
     }
     
     // -------------------------------------------------------------------------
-    // Tor Source Config
+    // Tor Source Config - MULTI-PORT ROTATION
     // -------------------------------------------------------------------------
     public static class TorSourceConfig {
         private boolean enabled = false;
-        private int capacityPerDay = 0;
-        private double costPer1k = 0.02;
+        private int capacityPerDay = 500000; // FREE - high capacity!
+        private double costPer1k = 0.00;     // FREE!
         private boolean premium = false;
-        private List<String> geos = List.of("GLOBAL");
+        private List<String> geos = List.of("GLOBAL", "US", "DE", "GB", "CA");
         private String socksHost = "127.0.0.1";
-        private int socksPort = 9050;
+        private int socksPort = 9050;        // Legacy single port
+        private List<Integer> socksPorts = List.of(9050, 9051, 9052, 9060); // Multi-port rotation!
         
         public boolean isEnabled() { return enabled; }
         public void setEnabled(boolean enabled) { this.enabled = enabled; }
@@ -133,6 +134,13 @@ public class HybridProxyProperties {
         
         public int getSocksPort() { return socksPort; }
         public void setSocksPort(int socksPort) { this.socksPort = socksPort; }
+        
+        /**
+         * Multi-port list for IP rotation.
+         * Each port = different Tor circuit = different IP!
+         */
+        public List<Integer> getSocksPorts() { return socksPorts; }
+        public void setSocksPorts(List<Integer> socksPorts) { this.socksPorts = socksPorts; }
     }
     
     // -------------------------------------------------------------------------

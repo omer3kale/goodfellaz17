@@ -94,17 +94,27 @@ public class HybridProxyConfig {
     private ProxySource buildTorSource() {
         HybridProxyProperties.TorSourceConfig cfg = properties.getSources().getTor();
         
+        // Convert List<Integer> to int[] for multi-port rotation
+        List<Integer> portList = cfg.getSocksPorts();
+        int[] ports;
+        if (portList != null && !portList.isEmpty()) {
+            ports = portList.stream().mapToInt(Integer::intValue).toArray();
+        } else {
+            ports = new int[]{cfg.getSocksPort()}; // Fallback to single port
+        }
+        
         TorProxySource source = new TorProxySource(
             cfg.isEnabled(),
             cfg.getCapacityPerDay(),
             cfg.getCostPer1k(),
             cfg.getGeos(),
             cfg.getSocksHost(),
-            cfg.getSocksPort()
+            ports
         );
         
-        log.info("Tor proxy source: enabled={}, capacity={}/day, socks={}:{}",
-            cfg.isEnabled(), cfg.getCapacityPerDay(), cfg.getSocksHost(), cfg.getSocksPort());
+        log.info("🧅 Tor proxy source: enabled={}, capacity={}/day @ ${}/1k (FREE!), ports={}",
+            cfg.isEnabled(), cfg.getCapacityPerDay(), cfg.getCostPer1k(),
+            java.util.Arrays.toString(ports));
         
         return source;
     }

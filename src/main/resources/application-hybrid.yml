@@ -43,19 +43,33 @@ proxy:
         #     auth: ""
       
       # =========================================================================
-      # Tor - High-volume global traffic
+      # TOR - FREE High-volume Multi-port IP Rotation
       # =========================================================================
-      # Assumes a Tor SOCKS proxy is running externally (not managed by Java).
-      # Install Tor: brew install tor && tor (macOS) or apt install tor (Linux)
+      # Docker setup (run this on your server):
+      # docker run -d --name tor-proxy \
+      #   -p 9050:9050 -p 9051:9051 -p 9052:9052 -p 9060:9060 \
+      #   dperson/torproxy -country US,DE,GB,CA -enableDelPort
+      #
+      # Each port = different Tor circuit = different IP!
+      # Test: curl --socks5 localhost:9050 https://httpbin.org/ip
       tor:
-        enabled: false  # Enable once Tor is running locally
-        capacity-per-day: 1000000
-        cost-per-1k: 0.02
+        enabled: ${TOR_ENABLED:true}   # FREE - enable by default!
+        capacity-per-day: 500000       # High volume
+        cost-per-1k: 0.00              # FREE!
         premium: false
         geos:
           - GLOBAL
-        socks-host: 127.0.0.1
-        socks-port: 9050
+          - US
+          - DE
+          - GB
+          - CA
+        socks-host: ${TOR_HOST:127.0.0.1}
+        socks-port: 9050               # Legacy single port (backwards compat)
+        socks-ports:                   # Multi-port rotation!
+          - ${TOR_PORT_1:9050}
+          - ${TOR_PORT_2:9051}
+          - ${TOR_PORT_3:9052}
+          - ${TOR_PORT_4:9060}
       
       # =========================================================================
       # Mobile - Phone farm for elite mobile-like traffic

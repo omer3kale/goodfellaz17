@@ -54,6 +54,14 @@ proxy:
     enabled: true
     interval-seconds: 60
   
+  # TOR Network (FREE - Multi-port rotation)
+  tor:
+    enabled: ${TOR_ENABLED:true}
+    host: ${TOR_HOST:127.0.0.1}
+    ports: ${TOR_PORTS:9050,9051,9052,9060}
+    capacity-per-day: 500000
+    cost-per-1k: 0.00  # FREE!
+  
   # BrightData Residential Proxies
   brightdata:
     enabled: ${BRIGHTDATA_ENABLED:false}

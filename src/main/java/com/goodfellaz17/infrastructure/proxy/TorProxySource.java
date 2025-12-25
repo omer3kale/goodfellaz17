@@ -7,19 +7,26 @@ import com.goodfellaz17.domain.model.ServicePriority;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Tor proxy source for high-volume global traffic.
  * 
- * Assumes there is a Tor SOCKS proxy running externally (not managed by Java).
- * Tor itself handles exit rotation; we just point at the SOCKS endpoint.
+ * MULTI-PORT ROTATION: Each port = different Tor circuit = different IP!
  * 
- * Configuration-driven: operator sets host/port and capacity based on their Tor setup.
+ * Docker setup:
+ * docker run -d --name tor-proxy \
+ *   -p 9050:9050 -p 9051:9051 -p 9052:9052 -p 9060:9060 \
+ *   dperson/torproxy -country US,DE,GB,CA -enableDelPort
+ * 
+ * Configuration-driven: operator sets host/ports and capacity based on their Tor setup.
  */
 public class TorProxySource extends AbstractProxySource {
     
     private final String socksHost;
-    private final int socksPort;
+    private final int[] socksPorts;
+    private final AtomicInteger portIndex = new AtomicInteger(0);
     
     public TorProxySource(
         boolean enabled,
@@ -27,7 +34,7 @@ public class TorProxySource extends AbstractProxySource {
         double costPer1k,
         List<String> supportedGeos,
         String socksHost,
-        int socksPort
+        int[] socksPorts
     ) {
         super(
             "tor",
@@ -41,7 +48,22 @@ public class TorProxySource extends AbstractProxySource {
             120    // 2 minute lease TTL (Tor circuits rotate)
         );
         this.socksHost = socksHost != null ? socksHost : "127.0.0.1";
-        this.socksPort = socksPort > 0 ? socksPort : 9050;
+        this.socksPorts = socksPorts != null && socksPorts.length > 0 
+            ? socksPorts 
+            : new int[]{9050, 9051, 9052, 9060};
+    }
+    
+    // Backwards compatible constructor
+    public TorProxySource(
+        boolean enabled,
+        int capacityPerDay,
+        double costPer1k,
+        List<String> supportedGeos,
+        String socksHost,
+        int socksPort
+    ) {
+        this(enabled, capacityPerDay, costPer1k, supportedGeos, socksHost, 
+             new int[]{socksPort > 0 ? socksPort : 9050});
     }
     
     @Override
@@ -58,17 +80,21 @@ public class TorProxySource extends AbstractProxySource {
     
     @Override
     protected ProxyLease createLease(OrderContext ctx) {
+        // Rotate through ports - each port = different IP!
+        int port = getNextPort();
+        
         return ProxyLease.create(
             name,
             socksHost,
-            socksPort,
+            port,
             ProxyLease.ProxyType.SOCKS5,
             "GLOBAL", // Tor doesn't guarantee specific geo
             riskLevel,
             leaseTtlSeconds,
             Map.of(
                 "source", "tor",
-                "circuit", "auto-rotate",
+                "circuit", "port-" + port,
+                "rotation", "round-robin",
                 "order_id", ctx.orderId() != null ? ctx.orderId() : "",
                 "service", ctx.serviceName() != null ? ctx.serviceName() : ""
             )
@@ -76,9 +102,41 @@ public class TorProxySource extends AbstractProxySource {
     }
     
     /**
+     * Round-robin port rotation for IP diversity.
+     */
+    private int getNextPort() {
+        int idx = portIndex.getAndIncrement() % socksPorts.length;
+        return socksPorts[idx];
+    }
+    
+    /**
+     * Random port selection for unpredictable rotation.
+     */
+    public int getRandomPort() {
+        return socksPorts[ThreadLocalRandom.current().nextInt(socksPorts.length)];
+    }
+    
+    /**
      * Get Tor SOCKS endpoint info for monitoring.
      */
     public String getSocksEndpoint() {
-        return socksHost + ":" + socksPort;
+        return socksHost + ":" + String.join(",", 
+            java.util.Arrays.stream(socksPorts)
+                .mapToObj(String::valueOf)
+                .toArray(String[]::new));
+    }
+    
+    /**
+     * Get all configured ports.
+     */
+    public int[] getSocksPorts() {
+        return socksPorts.clone();
+    }
+    
+    /**
+     * Get port count for capacity estimation.
+     */
+    public int getPortCount() {
+        return socksPorts.length;
     }
 }
