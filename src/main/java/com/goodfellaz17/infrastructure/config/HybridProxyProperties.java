@@ -1,7 +1,6 @@
 package com.goodfellaz17.infrastructure.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,8 +8,9 @@ import java.util.List;
 /**
  * Configuration properties for hybrid proxy routing.
  * Loaded from application-hybrid.yml when hybrid profile is active.
+ * 
+ * NOTE: Do NOT add @Component - registered via @EnableConfigurationProperties in HybridProxyConfig
  */
-@Component
 @ConfigurationProperties(prefix = "proxy.hybrid")
 public class HybridProxyProperties {
     
