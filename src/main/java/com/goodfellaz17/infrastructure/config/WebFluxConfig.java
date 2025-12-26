@@ -1,7 +1,6 @@
 package com.goodfellaz17.infrastructure.config;
 
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.reactive.config.EnableWebFlux;
 import org.springframework.web.reactive.config.ResourceHandlerRegistry;
 import org.springframework.web.reactive.config.WebFluxConfigurer;
 
@@ -9,9 +8,9 @@ import org.springframework.web.reactive.config.WebFluxConfigurer;
  * WebFlux Configuration.
  * 
  * Configures static resource handling for the reactive web stack.
+ * Note: Do NOT use @EnableWebFlux - it disables Spring Boot auto-configuration!
  */
 @Configuration
-@EnableWebFlux
 public class WebFluxConfig implements WebFluxConfigurer {
 
     @Override
