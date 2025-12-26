@@ -1,6 +1,10 @@
 package com.goodfellaz17.presentation.api;
 
 import com.goodfellaz17.infrastructure.persistence.repository.ApiKeyRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,6 +34,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/crypto")
 @CrossOrigin(origins = "*")
+@Tag(name = "Payments - Crypto", description = "Cryptocurrency payments via Coinbase Commerce")
 public class CryptoCheckoutController {
 
     private static final Logger log = LoggerFactory.getLogger(CryptoCheckoutController.class);

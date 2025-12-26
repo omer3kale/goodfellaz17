@@ -2,7 +2,9 @@ package com.goodfellaz17.presentation.api;
 
 import com.goodfellaz17.infrastructure.persistence.entity.ApiKeyEntity;
 import com.goodfellaz17.infrastructure.persistence.repository.ApiKeyRepository;
-import com.goodfellaz17.presentation.dto.ApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +23,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/key")
 @CrossOrigin(origins = "*")
+@Tag(name = "API Keys", description = "Self-service API key management")
 public class KeyController {
 
     private static final Logger log = LoggerFactory.getLogger(KeyController.class);
@@ -39,7 +42,12 @@ public class KeyController {
      * @return New API key
      */
     @PostMapping("/create")
+    @Operation(
+        summary = "Create a new API key",
+        description = "Generates a unique API key (botzzz_xxx) for the given email. Free to create."
+    )
     public Mono<ResponseEntity<Map<String, Object>>> createKey(
+            @Parameter(description = "User email address", required = true, example = "user@example.com")
             @RequestParam String email) {
         
         log.info("Creating API key for email: {}", email);

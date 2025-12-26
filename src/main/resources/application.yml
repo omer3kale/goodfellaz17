@@ -101,9 +101,26 @@ coinbase:
   api-key: ${COINBASE_API_KEY:}
   webhook-secret: ${COINBASE_WEBHOOK_SECRET:}
 
+# Resend Email Configuration
+resend:
+  api-key: ${RESEND_API_KEY:}
+  from-email: ${RESEND_FROM_EMAIL:orders@goodfellaz17.com}
+  enabled: ${RESEND_ENABLED:true}
+
 # App Configuration
 app:
   base-url: ${APP_BASE_URL:https://goodfellaz17.onrender.com}
+
+# SpringDoc OpenAPI / Swagger
+springdoc:
+  swagger-ui:
+    path: /docs
+    enabled: true
+    operationsSorter: method
+    tagsSorter: alpha
+  api-docs:
+    path: /api-docs
+    enabled: true
 
 # Actuator (Monitoring)
 management:

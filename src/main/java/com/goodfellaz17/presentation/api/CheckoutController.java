@@ -5,6 +5,10 @@ import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.checkout.Session;
 import com.stripe.param.checkout.SessionCreateParams;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,6 +29,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/checkout")
 @CrossOrigin(origins = "*")
+@Tag(name = "Payments - Stripe", description = "Credit card payments via Stripe")
 public class CheckoutController {
 
     private static final Logger log = LoggerFactory.getLogger(CheckoutController.class);

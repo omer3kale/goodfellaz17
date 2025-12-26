@@ -111,6 +111,20 @@
             <artifactId>spring-boot-starter-thymeleaf</artifactId>
         </dependency>
 
+        <!-- Resend Email SDK -->
+        <dependency>
+            <groupId>com.resend</groupId>
+            <artifactId>resend-java</artifactId>
+            <version>3.1.0</version>
+        </dependency>
+
+        <!-- SpringDoc OpenAPI (Swagger UI) for WebFlux -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
+            <version>2.3.0</version>
+        </dependency>
+
         <!-- JaCoCo Coverage (plugin provides runtime) -->
     </dependencies>
 
