@@ -1,51 +1,60 @@
 package com.goodfellaz17.presentation.web;
 
-import org.springframework.stereotype.Controller;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Mono;
 
 /**
  * Dashboard Page Controller.
  * 
  * Serves HTML pages for customer dashboard and admin panel.
- * Redirects with proper paths for static file serving.
+ * Uses WebFlux compatible resource serving.
  */
-@Controller
+@RestController
 public class DashboardPageController {
 
     /**
-     * Customer dashboard page.
-     * URL: /customer?key=demo_abc123
+     * Root → Checkout page.
      */
-    @GetMapping("/customer")
-    public String customerDashboard(@RequestParam(required = false) String key) {
-        // Forward to static HTML (key is handled by JS)
-        return "forward:/customer.html";
-    }
-
-    /**
-     * Admin panel page.
-     * URL: /admin
-     */
-    @GetMapping("/admin")
-    public String adminPanel() {
-        return "forward:/admin.html";
+    @GetMapping(value = "/", produces = MediaType.TEXT_HTML_VALUE)
+    public Mono<Resource> home() {
+        return Mono.just(new ClassPathResource("static/checkout.html"));
     }
 
     /**
      * Checkout/onboarding page.
-     * URL: /checkout or /checkout?key=existing_key
      */
-    @GetMapping("/checkout")
-    public String checkout(@RequestParam(required = false) String key) {
-        return "forward:/checkout.html";
+    @GetMapping(value = "/checkout", produces = MediaType.TEXT_HTML_VALUE)
+    public Mono<Resource> checkout(@RequestParam(required = false) String key) {
+        return Mono.just(new ClassPathResource("static/checkout.html"));
     }
 
     /**
-     * Root redirect to checkout (main landing).
+     * Customer dashboard page.
      */
-    @GetMapping("/")
-    public String home() {
-        return "forward:/checkout.html";
+    @GetMapping(value = "/customer", produces = MediaType.TEXT_HTML_VALUE)
+    public Mono<Resource> customerDashboard(@RequestParam(required = false) String key) {
+        return Mono.just(new ClassPathResource("static/customer.html"));
+    }
+
+    /**
+     * Admin panel page.
+     */
+    @GetMapping(value = "/admin", produces = MediaType.TEXT_HTML_VALUE)
+    public Mono<Resource> adminPanel() {
+        return Mono.just(new ClassPathResource("static/admin.html"));
+    }
+
+    /**
+     * API documentation page.
+     */
+    @GetMapping(value = "/docs", produces = MediaType.TEXT_HTML_VALUE)
+    public Mono<Resource> docs() {
+        // Redirect to Swagger UI
+        return Mono.just(new ClassPathResource("static/checkout.html"));
     }
 }

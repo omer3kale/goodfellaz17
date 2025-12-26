@@ -6,6 +6,14 @@ spring:
   application:
     name: goodfellaz17-provider
 
+  # WebFlux Static Resources
+  webflux:
+    static-path-pattern: "/**"
+  web:
+    resources:
+      static-locations: classpath:/static/
+      add-mappings: true
+
   # Database - Uses NEON_* vars (REQUIRED in production)
   r2dbc:
     url: r2dbc:postgresql://${NEON_HOST}:5432/${NEON_DB}?sslmode=require
@@ -27,8 +35,11 @@ spring:
 # Server Configuration
 server:
   port: ${PORT:8080}
-  servlet:
-    context-path: /
+  error:
+    whitelabel:
+      enabled: false
+    include-message: always
+    include-binding-errors: always
 
 # Bot Executor Configuration
 bot:
