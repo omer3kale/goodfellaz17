@@ -49,14 +49,14 @@ public interface OrderRepository extends ReactiveCrudRepository<OrderEntity, UUI
     /**
      * Find refundable failed orders.
      */
-    @Query("SELECT * FROM orders WHERE status = 'Failed' AND refundable = true")
+    @Query("SELECT * FROM orders WHERE status = 'Failed'")
     Flux<OrderEntity> findRefundableFailures();
 
     /**
      * Update order status.
      */
     @Modifying
-    @Query("UPDATE orders SET status = :status, updated_at = NOW() WHERE id = :orderId")
+    @Query("UPDATE orders SET status = :status, updated_at = NOW() WHERE order_id = :orderId")
     Mono<Integer> updateStatus(UUID orderId, String status);
 
     /**
@@ -65,10 +65,10 @@ public interface OrderRepository extends ReactiveCrudRepository<OrderEntity, UUI
     @Modifying
     @Query("""
         UPDATE orders SET 
-            progress = :progress, 
-            delivered_quantity = :deliveredQuantity,
+            charged_count = :deliveredQuantity,
+            remaining_count = quantity - :deliveredQuantity,
             updated_at = NOW() 
-        WHERE id = :orderId
+        WHERE order_id = :orderId
         """)
     Mono<Integer> updateProgress(UUID orderId, int progress, int deliveredQuantity);
 
@@ -79,11 +79,10 @@ public interface OrderRepository extends ReactiveCrudRepository<OrderEntity, UUI
     @Query("""
         UPDATE orders SET 
             status = 'Completed', 
-            progress = 100,
-            delivered_quantity = quantity,
-            completed_at = NOW(),
+            charged_count = quantity,
+            remaining_count = 0,
             updated_at = NOW()
-        WHERE id = :orderId
+        WHERE order_id = :orderId
         """)
     Mono<Integer> completeOrder(UUID orderId);
 
@@ -91,7 +90,7 @@ public interface OrderRepository extends ReactiveCrudRepository<OrderEntity, UUI
      * Mark order as refunded.
      */
     @Modifying
-    @Query("UPDATE orders SET status = 'Refunded', refundable = false, updated_at = NOW() WHERE id = :orderId")
+    @Query("UPDATE orders SET status = 'Refunded', updated_at = NOW() WHERE order_id = :orderId")
     Mono<Integer> markRefunded(UUID orderId);
 
     // ==================== ADMIN STATS ====================
@@ -133,13 +132,13 @@ public interface OrderRepository extends ReactiveCrudRepository<OrderEntity, UUI
     Mono<Long> completedOrderCount();
 
     /**
-     * Orders completed within 24h.
+     * Orders completed within 24h (estimate based on eta_minutes).
      */
     @Query("""
         SELECT COUNT(*) FROM orders 
         WHERE status = 'Completed' 
-        AND completed_at IS NOT NULL 
-        AND EXTRACT(EPOCH FROM (completed_at - created_at)) / 3600 < 24
+        AND eta_minutes IS NOT NULL 
+        AND eta_minutes < 1440
         """)
     Mono<Long> ordersCompletedWithin24h();
 

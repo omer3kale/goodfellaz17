@@ -250,7 +250,7 @@ public class CustomerDashboardController {
     private ServiceDto toServiceDto(ServiceEntity entity) {
         return new ServiceDto(
             entity.getId(),
-            entity.getServiceId(),
+            String.valueOf(entity.getServiceId()),  // Convert Integer to String
             entity.getName(),
             entity.getCategory(),
             entity.getPricePer1000(),

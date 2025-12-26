@@ -10,15 +10,14 @@ import java.time.Instant;
 /**
  * Service Entity - 12 package tiers.
  * Maps to services table for R2DBC.
+ * Matches existing Neon schema exactly.
  */
 @Table("services")
 public class ServiceEntity {
 
     @Id
-    private Integer id;
-
     @Column("service_id")
-    private String serviceId;
+    private Integer serviceId;
 
     @Column("name")
     private String name;
@@ -26,11 +25,8 @@ public class ServiceEntity {
     @Column("category")
     private String category;
 
-    @Column("price_per_1000")
-    private BigDecimal pricePer1000;
-
-    @Column("delivery_hours")
-    private Integer deliveryHours;
+    @Column("rate")
+    private BigDecimal rate;  // Price per 1000 (called 'rate' in existing schema)
 
     @Column("min_quantity")
     private Integer minQuantity;
@@ -38,20 +34,17 @@ public class ServiceEntity {
     @Column("max_quantity")
     private Integer maxQuantity;
 
-    @Column("neon_color")
-    private String neonColor;
+    @Column("drip_feed")
+    private Boolean dripFeed;
 
-    @Column("speed_tier")
-    private String speedTier;
-
-    @Column("geo_target")
-    private String geoTarget;
+    @Column("retention_days")
+    private Integer retentionDays;
 
     @Column("description")
     private String description;
 
-    @Column("is_active")
-    private Boolean isActive;
+    @Column("delivery_strategy")
+    private String deliveryStrategy;
 
     @Column("created_at")
     private Instant createdAt;
@@ -60,11 +53,9 @@ public class ServiceEntity {
     public ServiceEntity() {}
 
     // Getters and Setters
-    public Integer getId() { return id; }
-    public void setId(Integer id) { this.id = id; }
-
-    public String getServiceId() { return serviceId; }
-    public void setServiceId(String serviceId) { this.serviceId = serviceId; }
+    public Integer getServiceId() { return serviceId; }
+    public Integer getId() { return serviceId; }  // Alias for compatibility
+    public void setServiceId(Integer serviceId) { this.serviceId = serviceId; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
@@ -72,11 +63,9 @@ public class ServiceEntity {
     public String getCategory() { return category; }
     public void setCategory(String category) { this.category = category; }
 
-    public BigDecimal getPricePer1000() { return pricePer1000; }
-    public void setPricePer1000(BigDecimal pricePer1000) { this.pricePer1000 = pricePer1000; }
-
-    public Integer getDeliveryHours() { return deliveryHours; }
-    public void setDeliveryHours(Integer deliveryHours) { this.deliveryHours = deliveryHours; }
+    public BigDecimal getRate() { return rate; }
+    public BigDecimal getPricePer1000() { return rate; }  // Alias for compatibility
+    public void setRate(BigDecimal rate) { this.rate = rate; }
 
     public Integer getMinQuantity() { return minQuantity; }
     public void setMinQuantity(Integer minQuantity) { this.minQuantity = minQuantity; }
@@ -84,21 +73,42 @@ public class ServiceEntity {
     public Integer getMaxQuantity() { return maxQuantity; }
     public void setMaxQuantity(Integer maxQuantity) { this.maxQuantity = maxQuantity; }
 
-    public String getNeonColor() { return neonColor; }
-    public void setNeonColor(String neonColor) { this.neonColor = neonColor; }
+    public Boolean getDripFeed() { return dripFeed; }
+    public void setDripFeed(Boolean dripFeed) { this.dripFeed = dripFeed; }
 
-    public String getSpeedTier() { return speedTier; }
-    public void setSpeedTier(String speedTier) { this.speedTier = speedTier; }
-
-    public String getGeoTarget() { return geoTarget; }
-    public void setGeoTarget(String geoTarget) { this.geoTarget = geoTarget; }
+    public Integer getRetentionDays() { return retentionDays; }
+    public void setRetentionDays(Integer retentionDays) { this.retentionDays = retentionDays; }
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
 
-    public Boolean getIsActive() { return isActive; }
-    public void setIsActive(Boolean isActive) { this.isActive = isActive; }
+    public String getDeliveryStrategy() { return deliveryStrategy; }
+    public void setDeliveryStrategy(String deliveryStrategy) { this.deliveryStrategy = deliveryStrategy; }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+
+    // Computed properties for dashboard compatibility
+    public Integer getDeliveryHours() {
+        // Estimate based on delivery strategy
+        if ("lightning".equalsIgnoreCase(deliveryStrategy)) return 12;
+        if ("stealth".equalsIgnoreCase(deliveryStrategy)) return 48;
+        if ("ultra".equalsIgnoreCase(deliveryStrategy)) return 96;
+        return 24; // default
+    }
+
+    public String getSpeedTier() {
+        return deliveryStrategy != null ? deliveryStrategy.toUpperCase() : "STANDARD";
+    }
+
+    public String getNeonColor() {
+        if ("lightning".equalsIgnoreCase(deliveryStrategy)) return "#00ff88";
+        if ("stealth".equalsIgnoreCase(deliveryStrategy)) return "#00d4ff";
+        if ("ultra".equalsIgnoreCase(deliveryStrategy)) return "#ff0080";
+        return "#00ff88";
+    }
+
+    public String getGeoTarget() {
+        return "WORLDWIDE";  // Default
+    }
 }

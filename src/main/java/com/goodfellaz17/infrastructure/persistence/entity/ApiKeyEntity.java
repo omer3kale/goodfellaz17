@@ -6,23 +6,18 @@ import org.springframework.data.relational.core.mapping.Table;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.UUID;
 
 /**
  * API Key Entity - Customer wallet.
  * Maps to api_keys table for R2DBC.
+ * Matches existing Neon schema exactly.
  */
 @Table("api_keys")
 public class ApiKeyEntity {
 
     @Id
-    private UUID id;
-
     @Column("api_key")
     private String apiKey;
-
-    @Column("user_email")
-    private String userEmail;
 
     @Column("user_name")
     private String userName;
@@ -33,6 +28,9 @@ public class ApiKeyEntity {
     @Column("total_spent")
     private BigDecimal totalSpent;
 
+    @Column("orders_count")
+    private Integer ordersCount;
+
     @Column("is_active")
     private Boolean isActive;
 
@@ -42,26 +40,19 @@ public class ApiKeyEntity {
     // Default constructor for R2DBC
     public ApiKeyEntity() {}
 
-    public ApiKeyEntity(String apiKey, String userEmail, String userName, BigDecimal balance) {
-        this.id = UUID.randomUUID();
+    public ApiKeyEntity(String apiKey, String userName, BigDecimal balance) {
         this.apiKey = apiKey;
-        this.userEmail = userEmail;
         this.userName = userName;
         this.balance = balance;
         this.totalSpent = BigDecimal.ZERO;
+        this.ordersCount = 0;
         this.isActive = true;
         this.createdAt = Instant.now();
     }
 
     // Getters and Setters
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
-
     public String getApiKey() { return apiKey; }
     public void setApiKey(String apiKey) { this.apiKey = apiKey; }
-
-    public String getUserEmail() { return userEmail; }
-    public void setUserEmail(String userEmail) { this.userEmail = userEmail; }
 
     public String getUserName() { return userName; }
     public void setUserName(String userName) { this.userName = userName; }
@@ -71,6 +62,9 @@ public class ApiKeyEntity {
 
     public BigDecimal getTotalSpent() { return totalSpent; }
     public void setTotalSpent(BigDecimal totalSpent) { this.totalSpent = totalSpent; }
+
+    public Integer getOrdersCount() { return ordersCount; }
+    public void setOrdersCount(Integer ordersCount) { this.ordersCount = ordersCount; }
 
     public Boolean getIsActive() { return isActive; }
     public void setIsActive(Boolean isActive) { this.isActive = isActive; }

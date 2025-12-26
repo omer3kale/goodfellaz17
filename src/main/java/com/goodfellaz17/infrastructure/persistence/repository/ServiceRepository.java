@@ -15,13 +15,15 @@ import reactor.core.publisher.Mono;
 public interface ServiceRepository extends ReactiveCrudRepository<ServiceEntity, Integer> {
 
     /**
-     * Find by service_id string.
+     * Find by service_id (integer PK).
      */
-    Mono<ServiceEntity> findByServiceId(String serviceId);
+    @Query("SELECT * FROM services WHERE service_id = :serviceId")
+    Mono<ServiceEntity> findByServiceId(Integer serviceId);
 
     /**
-     * Find all active services.
+     * Find all active services (all services are active in current schema).
      */
+    @Query("SELECT * FROM services ORDER BY rate ASC")
     Flux<ServiceEntity> findByIsActiveTrue();
 
     /**
@@ -30,29 +32,20 @@ public interface ServiceRepository extends ReactiveCrudRepository<ServiceEntity,
     Flux<ServiceEntity> findByCategory(String category);
 
     /**
-     * Find by category (active only).
+     * Count all services.
      */
-    Flux<ServiceEntity> findByCategoryAndIsActiveTrue(String category);
-
-    /**
-     * Find by speed tier.
-     */
-    Flux<ServiceEntity> findBySpeedTier(String speedTier);
-
-    /**
-     * Count active services.
-     */
+    @Query("SELECT COUNT(*) FROM services")
     Mono<Long> countByIsActiveTrue();
 
     /**
-     * Find all ordered by price.
+     * Find all ordered by rate (price).
      */
-    @Query("SELECT * FROM services WHERE is_active = true ORDER BY price_per_1000 ASC")
+    @Query("SELECT * FROM services ORDER BY rate ASC")
     Flux<ServiceEntity> findAllActiveOrderedByPrice();
 
     /**
-     * Find all ordered by category then price.
+     * Find all ordered by category then rate.
      */
-    @Query("SELECT * FROM services WHERE is_active = true ORDER BY category, price_per_1000 ASC")
+    @Query("SELECT * FROM services ORDER BY category, rate ASC")
     Flux<ServiceEntity> findAllActiveOrderedByCategoryAndPrice();
 }

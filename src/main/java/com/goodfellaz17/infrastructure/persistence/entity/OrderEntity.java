@@ -11,12 +11,14 @@ import java.util.UUID;
 /**
  * Order Entity - Core tracking.
  * Maps to orders table for R2DBC.
+ * Matches existing Neon schema exactly.
  */
 @Table("orders")
 public class OrderEntity {
 
     @Id
-    private UUID id;
+    @Column("order_id")
+    private UUID orderId;
 
     @Column("api_key")
     private String apiKey;
@@ -36,52 +38,49 @@ public class OrderEntity {
     @Column("status")
     private String status;
 
-    @Column("progress")
-    private Integer progress;
+    @Column("charged_count")
+    private Integer chargedCount;
 
-    @Column("delivered_quantity")
-    private Integer deliveredQuantity;
+    @Column("remaining_count")
+    private Integer remainingCount;
 
-    @Column("started_at")
-    private Instant startedAt;
+    @Column("start_date")
+    private Instant startDate;
 
-    @Column("updated_at")
-    private Instant updatedAt;
+    @Column("eta_minutes")
+    private Integer etaMinutes;
 
-    @Column("completed_at")
-    private Instant completedAt;
-
-    @Column("refundable")
-    private Boolean refundable;
-
-    @Column("error_message")
-    private String errorMessage;
+    @Column("proxy_pool")
+    private String proxyPool;
 
     @Column("created_at")
     private Instant createdAt;
+
+    @Column("updated_at")
+    private Instant updatedAt;
 
     // Default constructor for R2DBC
     public OrderEntity() {}
 
     public OrderEntity(String apiKey, Integer serviceId, String link, 
                        Integer quantity, BigDecimal charged, String status) {
-        this.id = UUID.randomUUID();
+        this.orderId = UUID.randomUUID();
         this.apiKey = apiKey;
         this.serviceId = serviceId;
         this.link = link;
         this.quantity = quantity;
         this.charged = charged;
         this.status = status;
-        this.progress = 0;
-        this.deliveredQuantity = 0;
-        this.refundable = true;
+        this.chargedCount = 0;
+        this.remainingCount = quantity;
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
     }
 
     // Getters and Setters
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+    public UUID getOrderId() { return orderId; }
+    public UUID getId() { return orderId; }  // Alias for compatibility
+    public void setOrderId(UUID orderId) { this.orderId = orderId; }
 
     public String getApiKey() { return apiKey; }
     public void setApiKey(String apiKey) { this.apiKey = apiKey; }
@@ -101,27 +100,36 @@ public class OrderEntity {
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
 
-    public Integer getProgress() { return progress; }
-    public void setProgress(Integer progress) { this.progress = progress; }
+    public Integer getChargedCount() { return chargedCount; }
+    public void setChargedCount(Integer chargedCount) { this.chargedCount = chargedCount; }
 
-    public Integer getDeliveredQuantity() { return deliveredQuantity; }
-    public void setDeliveredQuantity(Integer deliveredQuantity) { this.deliveredQuantity = deliveredQuantity; }
+    public Integer getRemainingCount() { return remainingCount; }
+    public void setRemainingCount(Integer remainingCount) { this.remainingCount = remainingCount; }
 
-    public Instant getStartedAt() { return startedAt; }
-    public void setStartedAt(Instant startedAt) { this.startedAt = startedAt; }
+    public Instant getStartDate() { return startDate; }
+    public Instant getStartedAt() { return startDate; }  // Alias
+    public void setStartDate(Instant startDate) { this.startDate = startDate; }
+
+    public Integer getEtaMinutes() { return etaMinutes; }
+    public void setEtaMinutes(Integer etaMinutes) { this.etaMinutes = etaMinutes; }
+
+    public String getProxyPool() { return proxyPool; }
+    public void setProxyPool(String proxyPool) { this.proxyPool = proxyPool; }
+
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 
     public Instant getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 
-    public Instant getCompletedAt() { return completedAt; }
-    public void setCompletedAt(Instant completedAt) { this.completedAt = completedAt; }
+    // Computed properties for dashboard compatibility
+    public Integer getProgress() {
+        if (quantity == null || quantity == 0) return 0;
+        int delivered = chargedCount != null ? chargedCount : 0;
+        return (delivered * 100) / quantity;
+    }
 
-    public Boolean getRefundable() { return refundable; }
-    public void setRefundable(Boolean refundable) { this.refundable = refundable; }
-
-    public String getErrorMessage() { return errorMessage; }
-    public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
-
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public Integer getDeliveredQuantity() {
+        return chargedCount != null ? chargedCount : 0;
+    }
 }
