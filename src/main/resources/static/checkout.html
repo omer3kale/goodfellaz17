@@ -462,8 +462,19 @@
         <section class="deposit-card" id="deposit-section" style="display: none;">
             <h2>💳 Add Funds to Your Balance</h2>
             <p style="color: var(--text-secondary); margin-bottom: 1rem;">
-                Select an amount to deposit via Stripe. Funds will be available instantly.
+                Select an amount and payment method. Funds available instantly.
             </p>
+            
+            <!-- Payment Method Toggle -->
+            <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+                <button class="btn btn-primary" id="stripe-toggle" onclick="setPaymentMethod('stripe')" style="flex: 1;">
+                    💳 Card (Stripe)
+                </button>
+                <button class="btn btn-secondary" id="crypto-toggle" onclick="setPaymentMethod('crypto')" style="flex: 1; background: rgba(255,136,0,0.1); border-color: #ff8800; color: #ff8800;">
+                    ₿ Crypto (BTC/ETH/USDT)
+                </button>
+            </div>
+
             <div class="deposit-amounts">
                 <button class="deposit-btn" onclick="selectDeposit(10)">$10</button>
                 <button class="deposit-btn" onclick="selectDeposit(25)">$25</button>
@@ -476,6 +487,14 @@
                 <span style="color: var(--text-secondary);">Or enter custom amount:</span>
                 <input type="number" id="custom-amount" placeholder="$" min="5" max="10000" />
                 <button class="btn btn-primary" onclick="depositCustom()">Deposit</button>
+            </div>
+
+            <!-- Crypto Info -->
+            <div id="crypto-info" style="display: none; margin-top: 1rem; padding: 1rem; background: rgba(255,136,0,0.1); border: 1px solid #ff8800; border-radius: 8px;">
+                <p style="color: #ff8800; font-size: 0.875rem;">
+                    ₿ <strong>Supported:</strong> BTC, ETH, USDC, USDT, SOL, DOGE, SHIB, LTC + 50 more<br>
+                    ⚡ Instant confirmation • No KYC required
+                </p>
             </div>
         </section>
 
@@ -617,6 +636,13 @@
             } else if (params.get('deposit') === 'cancelled') {
                 showToast('Deposit cancelled', true);
             }
+
+            // Check for crypto deposit result
+            if (params.get('crypto') === 'success') {
+                showToast('✅ Crypto payment confirmed! Balance updated.');
+            } else if (params.get('crypto') === 'cancelled') {
+                showToast('Crypto payment cancelled', true);
+            }
         };
 
         // ==================== API KEY CREATION ====================
@@ -698,6 +724,30 @@
 
         // ==================== DEPOSIT ====================
         let selectedAmount = 0;
+        let paymentMethod = 'stripe'; // 'stripe' or 'crypto'
+
+        function setPaymentMethod(method) {
+            paymentMethod = method;
+            
+            // Update toggle button styles
+            const stripeBtn = document.getElementById('stripe-toggle');
+            const cryptoBtn = document.getElementById('crypto-toggle');
+            const cryptoInfo = document.getElementById('crypto-info');
+            
+            if (method === 'stripe') {
+                stripeBtn.className = 'btn btn-primary';
+                stripeBtn.style = 'flex: 1;';
+                cryptoBtn.className = 'btn btn-secondary';
+                cryptoBtn.style = 'flex: 1; background: rgba(255,136,0,0.1); border-color: #ff8800; color: #ff8800;';
+                cryptoInfo.style.display = 'none';
+            } else {
+                stripeBtn.className = 'btn btn-secondary';
+                stripeBtn.style = 'flex: 1;';
+                cryptoBtn.className = 'btn btn-primary';
+                cryptoBtn.style = 'flex: 1; background: #ff8800; color: #000;';
+                cryptoInfo.style.display = 'block';
+            }
+        }
 
         function selectDeposit(amount) {
             selectedAmount = amount;
@@ -734,21 +784,42 @@
                 return;
             }
 
-            showToast('⏳ Redirecting to Stripe...');
+            if (paymentMethod === 'crypto') {
+                // Crypto checkout via Coinbase Commerce
+                showToast('⏳ Creating crypto payment...');
 
-            try {
-                const res = await fetch('/api/checkout/create-session?apiKey=' + encodeURIComponent(currentApiKey) + '&amount=' + amount, {
-                    method: 'POST'
-                });
-                const data = await res.json();
+                try {
+                    const res = await fetch('/api/crypto/create-charge?apiKey=' + encodeURIComponent(currentApiKey) + '&amount=' + amount, {
+                        method: 'POST'
+                    });
+                    const data = await res.json();
 
-                if (data.success && data.url) {
-                    window.location.href = data.url;
-                } else {
-                    showToast(data.error || 'Failed to create checkout', true);
+                    if (data.success && data.url) {
+                        window.location.href = data.url;
+                    } else {
+                        showToast(data.error || 'Failed to create crypto payment', true);
+                    }
+                } catch (e) {
+                    showToast('Network error: ' + e.message, true);
                 }
-            } catch (e) {
-                showToast('Network error: ' + e.message, true);
+            } else {
+                // Stripe checkout
+                showToast('⏳ Redirecting to Stripe...');
+
+                try {
+                    const res = await fetch('/api/checkout/create-session?apiKey=' + encodeURIComponent(currentApiKey) + '&amount=' + amount, {
+                        method: 'POST'
+                    });
+                    const data = await res.json();
+
+                    if (data.success && data.url) {
+                        window.location.href = data.url;
+                    } else {
+                        showToast(data.error || 'Failed to create checkout', true);
+                    }
+                } catch (e) {
+                    showToast('Network error: ' + e.message, true);
+                }
             }
         }
 

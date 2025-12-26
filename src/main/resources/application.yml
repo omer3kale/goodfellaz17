@@ -96,6 +96,11 @@ stripe:
   webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_placeholder}
   publishable-key: ${STRIPE_PUBLISHABLE_KEY:pk_test_placeholder}
 
+# Coinbase Commerce (Crypto Payments)
+coinbase:
+  api-key: ${COINBASE_API_KEY:}
+  webhook-secret: ${COINBASE_WEBHOOK_SECRET:}
+
 # App Configuration
 app:
   base-url: ${APP_BASE_URL:https://goodfellaz17.onrender.com}
