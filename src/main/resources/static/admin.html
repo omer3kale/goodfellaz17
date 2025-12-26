@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - GOODFELLAZ17</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* ==================== DESIGN SYSTEM (botzzz773.pro) ==================== */
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            --card-bg: rgba(255,255,255,0.08);
+            --card-border: rgba(0,255,136,0.3);
+            --neon-green: #00ff88;
+            --neon-pink: #ff0080;
+            --neon-blue: #00d4ff;
+            --neon-yellow: #ffcc00;
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-muted: rgba(255,255,255,0.5);
+            --shadow: 0 8px 32px rgba(0,0,0,0.4);
+            --font-main: 'Inter', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--font-main);
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* ==================== HEADER ==================== */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(10,10,10,0.9);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--neon-pink);
+            text-decoration: none;
+        }
+
+        .logo-icon { font-size: 2rem; }
+
+        .header-stats {
+            display: flex;
+            gap: 2.5rem;
+            align-items: center;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            font-family: var(--font-mono);
+        }
+
+        .stat-value.revenue { color: var(--neon-green); }
+        .stat-value.orders { color: var(--neon-blue); }
+        .stat-value.live { color: var(--neon-pink); }
+
+        /* ==================== MAIN ====================  */
+        .main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* ==================== STATS CARDS ==================== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .stat-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .stat-card-title {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-card-icon {
+            font-size: 1.5rem;
+        }
+
+        .stat-card-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            font-family: var(--font-mono);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card-change {
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .change-up { color: var(--neon-green); }
+        .change-down { color: var(--neon-pink); }
+
+        /* ==================== CHARTS GRID ==================== */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 1024px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-card {
+            background: var(--card-bg);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+        }
+
+        .chart-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* ==================== REVENUE CHART ==================== */
+        .revenue-chart {
+            height: 200px;
+            display: flex;
+            align-items: flex-end;
+            gap: 4px;
+            padding-top: 1rem;
+        }
+
+        .revenue-bar {
+            flex: 1;
+            background: linear-gradient(to top, var(--neon-green), rgba(0,255,136,0.2));
+            border-radius: 4px 4px 0 0;
+            min-height: 10px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .revenue-bar:hover {
+            background: linear-gradient(to top, var(--neon-green), rgba(0,255,136,0.6));
+            transform: scaleY(1.02);
+        }
+
+        /* ==================== TOP SERVICES ==================== */
+        .service-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .service-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .service-rank {
+            width: 24px;
+            height: 24px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .service-info {
+            flex: 1;
+        }
+
+        .service-name {
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .service-bar {
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            margin-top: 0.25rem;
+            overflow: hidden;
+        }
+
+        .service-bar-fill {
+            height: 100%;
+            background: var(--neon-green);
+            border-radius: 2px;
+        }
+
+        .service-percent {
+            font-size: 0.875rem;
+            font-family: var(--font-mono);
+            color: var(--text-secondary);
+        }
+
+        /* ==================== DELIVERY STATS ==================== */
+        .delivery-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .delivery-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .delivery-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .delivery-value {
+            font-family: var(--font-mono);
+            font-weight: 600;
+        }
+
+        .delivery-value.good { color: var(--neon-green); }
+        .delivery-value.warning { color: var(--neon-yellow); }
+        .delivery-value.bad { color: var(--neon-pink); }
+
+        /* ==================== RECENT ORDERS ==================== */
+        .orders-card {
+            background: var(--card-bg);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .orders-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .orders-title {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .refresh-btn {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.2);
+            color: var(--text-secondary);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+        }
+
+        .refresh-btn:hover {
+            border-color: var(--neon-green);
+            color: var(--neon-green);
+        }
+
+        .orders-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .orders-table th {
+            text-align: left;
+            padding: 1rem 1.5rem;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .orders-table td {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .order-customer {
+            font-size: 0.875rem;
+        }
+
+        .order-service {
+            font-weight: 500;
+        }
+
+        .order-amount {
+            font-family: var(--font-mono);
+            color: var(--neon-green);
+        }
+
+        .order-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .status-pending { background: rgba(255,255,255,0.1); color: var(--text-secondary); }
+        .status-processing { background: rgba(0,212,255,0.2); color: var(--neon-blue); }
+        .status-completed { background: rgba(0,255,136,0.2); color: var(--neon-green); }
+        .status-failed { background: rgba(255,0,128,0.2); color: var(--neon-pink); }
+
+        /* ==================== LOADING ==================== */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem;
+            color: var(--text-muted);
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top-color: var(--neon-pink);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ==================== RESPONSIVE ==================== */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .header-stats {
+                gap: 1rem;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .orders-table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- HEADER -->
+    <header class="header">
+        <a href="/" class="logo">
+            <span class="logo-icon">👑</span>
+            ADMIN PANEL
+        </a>
+        <div class="header-stats">
+            <div class="stat-item">
+                <div class="stat-label">Total Revenue</div>
+                <div class="stat-value revenue" id="totalRevenue">$0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Today</div>
+                <div class="stat-value orders" id="ordersToday">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Live</div>
+                <div class="stat-value live" id="activeOrders">0</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN -->
+    <main class="main">
+        <!-- STATS CARDS -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <span class="stat-card-title">Revenue (30d)</span>
+                    <span class="stat-card-icon">💰</span>
+                </div>
+                <div class="stat-card-value" id="revenue30d" style="color: var(--neon-green);">$0</div>
+                <div class="stat-card-change change-up">
+                    <span>↑</span> vs last period
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <span class="stat-card-title">Completed Orders</span>
+                    <span class="stat-card-icon">✅</span>
+                </div>
+                <div class="stat-card-value" id="completedOrders" style="color: var(--neon-blue);">0</div>
+                <div class="stat-card-change change-up">
+                    <span>All time</span>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <span class="stat-card-title">Delivery Rate (&lt;24h)</span>
+                    <span class="stat-card-icon">⚡</span>
+                </div>
+                <div class="stat-card-value" id="deliveryRate" style="color: var(--neon-yellow);">0%</div>
+                <div class="stat-card-change">
+                    <span>Target: 90%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- CHARTS -->
+        <div class="charts-grid">
+            <!-- Revenue Chart -->
+            <div class="chart-card">
+                <h3 class="chart-title">📈 Revenue (30 Days)</h3>
+                <div class="revenue-chart" id="revenueChart">
+                    <!-- Dynamic bars -->
+                </div>
+            </div>
+
+            <!-- Top Services -->
+            <div class="chart-card">
+                <h3 class="chart-title">🏆 Top Services</h3>
+                <div class="service-list" id="topServices">
+                    <div class="loading"><div class="spinner"></div></div>
+                </div>
+            </div>
+
+            <!-- Delivery Stats -->
+            <div class="chart-card">
+                <h3 class="chart-title">📊 Delivery Stats</h3>
+                <div class="delivery-stats" id="deliveryStats">
+                    <div class="delivery-item">
+                        <span class="delivery-label">&lt;12h</span>
+                        <span class="delivery-value good" id="del12h">0%</span>
+                    </div>
+                    <div class="delivery-item">
+                        <span class="delivery-label">12-24h</span>
+                        <span class="delivery-value good" id="del24h">0%</span>
+                    </div>
+                    <div class="delivery-item">
+                        <span class="delivery-label">24-48h</span>
+                        <span class="delivery-value warning" id="del48h">0%</span>
+                    </div>
+                    <div class="delivery-item">
+                        <span class="delivery-label">&gt;48h</span>
+                        <span class="delivery-value bad" id="delOver">0%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RECENT ORDERS -->
+        <div class="orders-card">
+            <div class="orders-header">
+                <h3 class="orders-title">📋 Recent Orders</h3>
+                <button class="refresh-btn" onclick="loadStats()">🔄 Refresh</button>
+            </div>
+            <table class="orders-table">
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Service</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody id="ordersTable">
+                    <tr><td colspan="5" class="loading"><div class="spinner"></div></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <script>
+        // ==================== INIT ====================
+        async function init() {
+            await loadStats();
+            // Auto-refresh every 30s
+            setInterval(loadStats, 30000);
+        }
+
+        // ==================== LOAD STATS ====================
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/admin/stats');
+                const stats = await res.json();
+                renderStats(stats);
+            } catch (err) {
+                console.error('Failed to load stats:', err);
+            }
+        }
+
+        // ==================== RENDER ====================
+        function renderStats(stats) {
+            // Header stats
+            document.getElementById('totalRevenue').textContent = `$${formatNumber(stats.totalRevenue)}`;
+            document.getElementById('ordersToday').textContent = stats.ordersToday;
+            document.getElementById('activeOrders').textContent = stats.activeOrders;
+
+            // Cards
+            document.getElementById('revenue30d').textContent = `$${formatNumber(stats.revenue30d)}`;
+            document.getElementById('completedOrders').textContent = stats.completedOrders;
+            document.getElementById('deliveryRate').textContent = `${stats.deliveryRate24h.toFixed(1)}%`;
+
+            // Revenue chart (mock data for visual)
+            renderRevenueChart();
+
+            // Top services
+            renderTopServices(stats.topServices);
+
+            // Delivery stats (mock for visual)
+            document.getElementById('del12h').textContent = `${(stats.deliveryRate24h * 0.6).toFixed(0)}%`;
+            document.getElementById('del24h').textContent = `${(stats.deliveryRate24h * 0.4).toFixed(0)}%`;
+            document.getElementById('del48h').textContent = `${(100 - stats.deliveryRate24h) * 0.6}%`;
+            document.getElementById('delOver').textContent = `${((100 - stats.deliveryRate24h) * 0.4).toFixed(0)}%`;
+        }
+
+        function renderRevenueChart() {
+            const chart = document.getElementById('revenueChart');
+            // Generate 30 bars with random heights for visual
+            const bars = [];
+            for (let i = 0; i < 30; i++) {
+                const height = Math.random() * 80 + 20;
+                bars.push(`<div class="revenue-bar" style="height: ${height}%" title="Day ${i + 1}"></div>`);
+            }
+            chart.innerHTML = bars.join('');
+        }
+
+        function renderTopServices(services) {
+            const container = document.getElementById('topServices');
+            if (!services || services.length === 0) {
+                // Mock data for demo
+                services = [
+                    { serviceName: 'Lightning 12h', percentage: 42 },
+                    { serviceName: 'Stealth 48h', percentage: 28 },
+                    { serviceName: 'Ultra 96h', percentage: 15 },
+                    { serviceName: 'Monthly Listeners', percentage: 10 },
+                    { serviceName: 'Track Saves', percentage: 5 }
+                ];
+            }
+
+            container.innerHTML = services.map((svc, i) => `
+                <div class="service-item">
+                    <div class="service-rank">${i + 1}</div>
+                    <div class="service-info">
+                        <div class="service-name">${svc.serviceName}</div>
+                        <div class="service-bar">
+                            <div class="service-bar-fill" style="width: ${svc.percentage || 20}%"></div>
+                        </div>
+                    </div>
+                    <div class="service-percent">${svc.percentage || 0}%</div>
+                </div>
+            `).join('');
+        }
+
+        // ==================== HELPERS ====================
+        function formatNumber(num) {
+            if (!num) return '0';
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toFixed(2);
+        }
+
+        // ==================== START ====================
+        init();
+    </script>
+</body>
+</html>

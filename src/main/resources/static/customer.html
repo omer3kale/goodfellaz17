@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Dashboard - GOODFELLAZ17</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* ==================== DESIGN SYSTEM (botzzz773.pro) ==================== */
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            --card-bg: rgba(255,255,255,0.08);
+            --card-border: rgba(0,255,136,0.3);
+            --neon-green: #00ff88;
+            --neon-pink: #ff0080;
+            --neon-blue: #00d4ff;
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-muted: rgba(255,255,255,0.5);
+            --shadow: 0 8px 32px rgba(0,0,0,0.4);
+            --font-main: 'Inter', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--font-main);
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* ==================== HEADER ==================== */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(10,10,10,0.9);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--neon-green);
+            text-decoration: none;
+        }
+
+        .logo-icon { font-size: 2rem; }
+
+        .header-stats {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            font-family: var(--font-mono);
+        }
+
+        .stat-value.balance { color: var(--neon-green); }
+        .stat-value.active { color: var(--neon-blue); }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+            border: none;
+            font-size: 0.875rem;
+        }
+
+        .btn-primary {
+            background: var(--neon-green);
+            color: #000;
+        }
+
+        .btn-primary:hover {
+            transform: scale(1.02);
+            box-shadow: 0 0 20px rgba(0,255,136,0.4);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid var(--neon-green);
+            color: var(--neon-green);
+        }
+
+        /* ==================== MAIN CONTENT ==================== */
+        .main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* ==================== SERVICES GRID ==================== */
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .service-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+            cursor: pointer;
+        }
+
+        .service-card:hover {
+            transform: scale(1.02);
+            box-shadow: var(--shadow);
+        }
+
+        .service-card.lightning { border-color: var(--neon-green); }
+        .service-card.stealth { border-color: var(--neon-blue); }
+        .service-card.ultra { border-color: var(--neon-pink); }
+
+        .service-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .service-name {
+            font-size: 1.125rem;
+            font-weight: 600;
+        }
+
+        .service-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .badge-lightning { background: rgba(0,255,136,0.2); color: var(--neon-green); }
+        .badge-stealth { background: rgba(0,212,255,0.2); color: var(--neon-blue); }
+        .badge-ultra { background: rgba(255,0,128,0.2); color: var(--neon-pink); }
+
+        .service-price {
+            font-size: 2rem;
+            font-weight: 700;
+            font-family: var(--font-mono);
+            margin: 0.5rem 0;
+        }
+
+        .service-price span {
+            font-size: 1rem;
+            color: var(--text-muted);
+        }
+
+        .service-meta {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .service-desc {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        .order-form {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .order-form input {
+            flex: 1;
+            padding: 0.75rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.05);
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 0.875rem;
+        }
+
+        .order-form input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .order-form input:focus {
+            outline: none;
+            border-color: var(--neon-green);
+        }
+
+        .order-btn {
+            padding: 0.75rem 1.25rem;
+            background: var(--neon-green);
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .order-btn:hover {
+            box-shadow: 0 0 20px rgba(0,255,136,0.4);
+        }
+
+        /* ==================== ORDERS TABLE ==================== */
+        .orders-section {
+            background: var(--card-bg);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .orders-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .orders-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+        }
+
+        .refresh-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .refresh-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--neon-green);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .orders-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .orders-table th {
+            text-align: left;
+            padding: 1rem 1.5rem;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .orders-table td {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .order-id {
+            font-family: var(--font-mono);
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .order-service {
+            font-weight: 500;
+        }
+
+        .order-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .status-pending { background: rgba(255,255,255,0.1); color: var(--text-secondary); }
+        .status-processing { background: rgba(0,212,255,0.2); color: var(--neon-blue); }
+        .status-completed { background: rgba(0,255,136,0.2); color: var(--neon-green); }
+        .status-failed { background: rgba(255,0,128,0.2); color: var(--neon-pink); }
+
+        .progress-bar {
+            font-family: var(--font-mono);
+            font-size: 0.875rem;
+            letter-spacing: -0.05em;
+        }
+
+        .progress-fill { color: var(--neon-green); }
+        .progress-empty { color: rgba(255,255,255,0.2); }
+
+        .order-eta {
+            font-family: var(--font-mono);
+            font-size: 0.875rem;
+        }
+
+        /* ==================== ORDER MODAL ==================== */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active { display: flex; }
+
+        .modal-content {
+            background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: var(--shadow);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.05);
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--neon-green);
+        }
+
+        .order-summary {
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .summary-total {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--neon-green);
+            font-family: var(--font-mono);
+        }
+
+        /* ==================== RESPONSIVE ==================== */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .header-stats {
+                gap: 1rem;
+            }
+
+            .services-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .orders-table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+
+        /* ==================== LOADING ==================== */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem;
+            color: var(--text-muted);
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top-color: var(--neon-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ==================== TOAST ==================== */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            background: var(--neon-green);
+            color: #000;
+            font-weight: 500;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 2000;
+        }
+
+        .toast.active {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast.error {
+            background: var(--neon-pink);
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <!-- HEADER -->
+    <header class="header">
+        <a href="/" class="logo">
+            <span class="logo-icon">🦅</span>
+            GOODFELLAZ17
+        </a>
+        <div class="header-stats">
+            <div class="stat-item">
+                <div class="stat-label">Balance</div>
+                <div class="stat-value balance" id="balance">$0.00</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Active</div>
+                <div class="stat-value active" id="activeOrders">0</div>
+            </div>
+            <button class="btn btn-primary" onclick="openAddFundsModal()">+ Add Funds</button>
+        </div>
+    </header>
+
+    <!-- MAIN -->
+    <main class="main">
+        <!-- SERVICES -->
+        <section>
+            <h2 class="section-title">⚡ Services</h2>
+            <div class="services-grid" id="servicesGrid">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+        </section>
+
+        <!-- ORDERS -->
+        <section class="orders-section">
+            <div class="orders-header">
+                <h2 class="orders-title">📋 Your Orders</h2>
+                <div class="refresh-indicator">
+                    <div class="refresh-dot"></div>
+                    Live (30s refresh)
+                </div>
+            </div>
+            <table class="orders-table">
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Service</th>
+                        <th>Status</th>
+                        <th>Progress</th>
+                        <th>ETA</th>
+                    </tr>
+                </thead>
+                <tbody id="ordersTable">
+                    <tr><td colspan="5" class="loading"><div class="spinner"></div></td></tr>
+                </tbody>
+            </table>
+        </section>
+    </main>
+
+    <!-- ORDER MODAL -->
+    <div class="modal" id="orderModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">New Order</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="orderForm" onsubmit="submitOrder(event)">
+                <input type="hidden" id="serviceId">
+                <div class="form-group">
+                    <label class="form-label">Service</label>
+                    <input class="form-input" id="serviceName" readonly>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Spotify URL</label>
+                    <input class="form-input" type="url" id="spotifyLink" placeholder="https://open.spotify.com/track/..." required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Quantity</label>
+                    <input class="form-input" type="number" id="quantity" min="100" value="1000" required>
+                </div>
+                <div class="order-summary">
+                    <div class="summary-row">
+                        <span>Price per 1k</span>
+                        <span id="priceDisplay">$0.00</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Total</span>
+                        <span class="summary-total" id="totalDisplay">$0.00</span>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Place Order</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // Get API key from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const apiKey = urlParams.get('key') || 'demo';
+
+        let services = [];
+        let currentService = null;
+
+        // ==================== INIT ====================
+        async function init() {
+            await Promise.all([
+                loadSummary(),
+                loadServices(),
+                loadOrders()
+            ]);
+
+            // Auto-refresh orders every 30s
+            setInterval(loadOrders, 30000);
+        }
+
+        // ==================== LOAD DATA ====================
+        async function loadSummary() {
+            try {
+                const res = await fetch(`/api/customer/${apiKey}/summary`);
+                if (!res.ok) throw new Error('Invalid API key');
+                const data = await res.json();
+                
+                document.getElementById('balance').textContent = `$${data.balance.toFixed(2)}`;
+                document.getElementById('activeOrders').textContent = data.activeOrders;
+            } catch (err) {
+                showToast('Error loading account: ' + err.message, true);
+            }
+        }
+
+        async function loadServices() {
+            try {
+                const res = await fetch('/api/customer/services');
+                services = await res.json();
+                renderServices();
+            } catch (err) {
+                document.getElementById('servicesGrid').innerHTML = '<p style="color: var(--neon-pink);">Failed to load services</p>';
+            }
+        }
+
+        async function loadOrders() {
+            try {
+                const res = await fetch(`/api/customer/${apiKey}/orders`);
+                const orders = await res.json();
+                renderOrders(orders);
+            } catch (err) {
+                document.getElementById('ordersTable').innerHTML = '<tr><td colspan="5" style="color: var(--neon-pink);">Failed to load orders</td></tr>';
+            }
+        }
+
+        // ==================== RENDER ====================
+        function renderServices() {
+            const grid = document.getElementById('servicesGrid');
+            grid.innerHTML = services.map(svc => `
+                <div class="service-card ${svc.speedTier.toLowerCase()}" onclick="openOrderModal(${svc.id})">
+                    <div class="service-header">
+                        <div class="service-name">${svc.name}</div>
+                        <span class="service-badge badge-${svc.speedTier.toLowerCase()}">${svc.speedTier}</span>
+                    </div>
+                    <div class="service-price">$${svc.pricePer1000.toFixed(2)} <span>/1k</span></div>
+                    <div class="service-meta">
+                        <span>⏱️ ${svc.deliveryHours}h</span>
+                        <span>🌍 ${svc.geoTarget}</span>
+                    </div>
+                    <div class="service-desc">${svc.description || ''}</div>
+                </div>
+            `).join('');
+        }
+
+        function renderOrders(orders) {
+            const table = document.getElementById('ordersTable');
+            if (orders.length === 0) {
+                table.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">No orders yet. Place your first order above!</td></tr>';
+                return;
+            }
+
+            table.innerHTML = orders.map(order => {
+                const statusClass = `status-${order.status.toLowerCase()}`;
+                const progressBar = renderProgressBar(order.progress);
+                return `
+                    <tr>
+                        <td class="order-id">${order.id.substring(0, 8)}...</td>
+                        <td class="order-service">${order.serviceName}</td>
+                        <td><span class="order-status ${statusClass}">${order.status}</span></td>
+                        <td class="progress-bar">${progressBar} ${order.progress}%</td>
+                        <td class="order-eta">${order.eta}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderProgressBar(progress) {
+            const filled = Math.floor(progress / 10);
+            const empty = 10 - filled;
+            return `<span class="progress-fill">${'█'.repeat(filled)}</span><span class="progress-empty">${'▁'.repeat(empty)}</span>`;
+        }
+
+        // ==================== MODAL ====================
+        function openOrderModal(serviceId) {
+            currentService = services.find(s => s.id === serviceId);
+            if (!currentService) return;
+
+            document.getElementById('serviceId').value = serviceId;
+            document.getElementById('serviceName').value = currentService.name;
+            document.getElementById('quantity').min = currentService.minQuantity;
+            document.getElementById('quantity').max = currentService.maxQuantity;
+            document.getElementById('quantity').value = currentService.minQuantity;
+            
+            updatePriceDisplay();
+            document.getElementById('orderModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('orderModal').classList.remove('active');
+        }
+
+        function updatePriceDisplay() {
+            if (!currentService) return;
+            const qty = parseInt(document.getElementById('quantity').value) || 0;
+            const total = (currentService.pricePer1000 * qty / 1000).toFixed(2);
+            document.getElementById('priceDisplay').textContent = `$${currentService.pricePer1000.toFixed(2)}`;
+            document.getElementById('totalDisplay').textContent = `$${total}`;
+        }
+
+        document.getElementById('quantity').addEventListener('input', updatePriceDisplay);
+
+        // ==================== SUBMIT ORDER ====================
+        async function submitOrder(e) {
+            e.preventDefault();
+            
+            const order = {
+                apiKey: apiKey,
+                serviceId: parseInt(document.getElementById('serviceId').value),
+                link: document.getElementById('spotifyLink').value,
+                quantity: parseInt(document.getElementById('quantity').value)
+            };
+
+            try {
+                const res = await fetch('/api/customer/checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(order)
+                });
+
+                const data = await res.json();
+                
+                if (data.success) {
+                    showToast('Order placed successfully! 🎉');
+                    closeModal();
+                    loadSummary();
+                    loadOrders();
+                    document.getElementById('orderForm').reset();
+                } else {
+                    showToast(data.message, true);
+                }
+            } catch (err) {
+                showToast('Failed to place order: ' + err.message, true);
+            }
+        }
+
+        // ==================== TOAST ====================
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast active' + (isError ? ' error' : '');
+            setTimeout(() => toast.classList.remove('active'), 3000);
+        }
+
+        function openAddFundsModal() {
+            showToast('Add funds feature coming soon! Contact support.', false);
+        }
+
+        // ==================== START ====================
+        init();
+    </script>
+</body>
+</html>
