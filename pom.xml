@@ -98,6 +98,19 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Stripe Payment SDK -->
+        <dependency>
+            <groupId>com.stripe</groupId>
+            <artifactId>stripe-java</artifactId>
+            <version>24.18.0</version>
+        </dependency>
+
+        <!-- Thymeleaf for HTML templates (optional, using static files) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+
         <!-- JaCoCo Coverage (plugin provides runtime) -->
     </dependencies>
 

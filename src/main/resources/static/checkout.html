@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - GOODFELLAZ17</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        /* ==================== DESIGN SYSTEM (botzzz773.pro) ==================== */
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            --card-bg: rgba(255,255,255,0.08);
+            --card-border: rgba(0,255,136,0.3);
+            --neon-green: #00ff88;
+            --neon-pink: #ff0080;
+            --neon-blue: #00d4ff;
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-muted: rgba(255,255,255,0.5);
+            --shadow: 0 8px 32px rgba(0,0,0,0.4);
+            --font-main: 'Inter', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--font-main);
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* ==================== HEADER ==================== */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(10,10,10,0.9);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--neon-green);
+            text-decoration: none;
+        }
+
+        .logo-icon { font-size: 2rem; }
+
+        .header-stats {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .stat-item { text-align: center; }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            font-family: var(--font-mono);
+        }
+
+        .stat-value.balance { color: var(--neon-green); }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+            border: none;
+            font-size: 0.875rem;
+        }
+
+        .btn-primary {
+            background: var(--neon-green);
+            color: #000;
+        }
+
+        .btn-primary:hover {
+            transform: scale(1.02);
+            box-shadow: 0 0 20px rgba(0,255,136,0.4);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid var(--neon-green);
+            color: var(--neon-green);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(0,255,136,0.1);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* ==================== MAIN CONTENT ==================== */
+        .main {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* ==================== CREATE KEY SECTION ==================== */
+        .create-key-card {
+            background: var(--card-bg);
+            border: 1px solid var(--neon-blue);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .create-key-card h2 {
+            color: var(--neon-blue);
+            margin-bottom: 1rem;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .input-field {
+            flex: 1;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(0,0,0,0.3);
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-family: var(--font-main);
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--neon-green);
+            box-shadow: 0 0 10px rgba(0,255,136,0.2);
+        }
+
+        .input-field::placeholder {
+            color: var(--text-muted);
+        }
+
+        .key-result {
+            background: rgba(0,255,136,0.1);
+            border: 1px solid var(--neon-green);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .key-result.show {
+            display: block;
+        }
+
+        .key-result .label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .key-result .key-value {
+            font-family: var(--font-mono);
+            font-size: 1.25rem;
+            color: var(--neon-green);
+            word-break: break-all;
+        }
+
+        /* ==================== SERVICES GRID ==================== */
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .service-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+            cursor: pointer;
+        }
+
+        .service-card:hover {
+            transform: scale(1.02);
+            box-shadow: var(--shadow);
+        }
+
+        .service-card.lightning { border-color: var(--neon-green); }
+        .service-card.stealth { border-color: var(--neon-blue); }
+        .service-card.ultra { border-color: var(--neon-pink); }
+
+        .service-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.5rem;
+        }
+
+        .service-name {
+            font-size: 1.125rem;
+            font-weight: 600;
+        }
+
+        .service-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .badge-lightning { background: rgba(0,255,136,0.2); color: var(--neon-green); }
+        .badge-stealth { background: rgba(0,212,255,0.2); color: var(--neon-blue); }
+        .badge-ultra { background: rgba(255,0,128,0.2); color: var(--neon-pink); }
+
+        .service-price {
+            font-size: 2rem;
+            font-weight: 700;
+            font-family: var(--font-mono);
+            margin: 0.5rem 0;
+        }
+
+        .service-price span {
+            font-size: 1rem;
+            color: var(--text-muted);
+        }
+
+        .service-meta {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .service-desc {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        /* ==================== DEPOSIT SECTION ==================== */
+        .deposit-card {
+            background: var(--card-bg);
+            border: 1px solid var(--neon-green);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .deposit-card h2 {
+            color: var(--neon-green);
+            margin-bottom: 1rem;
+        }
+
+        .deposit-amounts {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+
+        .deposit-btn {
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            background: rgba(0,255,136,0.1);
+            border: 1px solid var(--neon-green);
+            color: var(--neon-green);
+            font-family: var(--font-mono);
+            font-size: 1.125rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .deposit-btn:hover {
+            background: var(--neon-green);
+            color: #000;
+        }
+
+        .deposit-btn.selected {
+            background: var(--neon-green);
+            color: #000;
+        }
+
+        .custom-deposit {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .custom-deposit input {
+            width: 150px;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--neon-green);
+            background: rgba(0,0,0,0.3);
+            color: var(--neon-green);
+            font-family: var(--font-mono);
+            font-size: 1.25rem;
+        }
+
+        /* ==================== TOAST NOTIFICATIONS ==================== */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            background: var(--neon-green);
+            color: #000;
+            font-weight: 600;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast.error {
+            background: var(--neon-pink);
+            color: #fff;
+        }
+
+        /* ==================== LOADING SPINNER ==================== */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+            margin-right: 0.5rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ==================== RESPONSIVE ==================== */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 1rem;
+                padding: 1rem;
+            }
+
+            .header-stats {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .input-group {
+                flex-direction: column;
+            }
+
+            .deposit-amounts {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- HEADER -->
+    <header class="header">
+        <a href="/" class="logo">
+            <span class="logo-icon">⚡</span>
+            <span>GOODFELLAZ17</span>
+        </a>
+        <div class="header-stats">
+            <div class="stat-item" id="balance-display" style="display: none;">
+                <div class="stat-label">Balance</div>
+                <div class="stat-value balance" id="current-balance">$0.00</div>
+            </div>
+            <a href="/customer" class="btn btn-secondary" id="dashboard-link" style="display: none;">
+                Go to Dashboard →
+            </a>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="main">
+        <!-- CREATE API KEY SECTION -->
+        <section class="create-key-card" id="create-key-section">
+            <h2>🔑 Get Your API Key (Free)</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                Enter your email to create your unique API key. You'll use this to access your dashboard and place orders.
+            </p>
+            <div class="input-group">
+                <input type="email" class="input-field" id="email-input" placeholder="your@email.com" />
+                <button class="btn btn-primary" id="create-key-btn" onclick="createKey()">
+                    Create API Key
+                </button>
+            </div>
+            <div class="key-result" id="key-result">
+                <div class="label">Your API Key:</div>
+                <div class="key-value" id="new-api-key"></div>
+                <button class="btn btn-secondary" style="margin-top: 1rem;" onclick="copyKey()">
+                    📋 Copy Key
+                </button>
+            </div>
+        </section>
+
+        <!-- HAVE A KEY SECTION -->
+        <section class="create-key-card" style="border-color: var(--neon-pink);">
+            <h2 style="color: var(--neon-pink);">🎫 Already Have a Key?</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                Enter your existing API key to access your dashboard or add funds.
+            </p>
+            <div class="input-group">
+                <input type="text" class="input-field" id="existing-key-input" placeholder="botzzz_xxxxxxxxxxxxxxxxxx" />
+                <button class="btn btn-primary" onclick="loadExistingKey()">
+                    Load Dashboard
+                </button>
+            </div>
+        </section>
+
+        <!-- DEPOSIT SECTION (shown after key created/loaded) -->
+        <section class="deposit-card" id="deposit-section" style="display: none;">
+            <h2>💳 Add Funds to Your Balance</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                Select an amount to deposit via Stripe. Funds will be available instantly.
+            </p>
+            <div class="deposit-amounts">
+                <button class="deposit-btn" onclick="selectDeposit(10)">$10</button>
+                <button class="deposit-btn" onclick="selectDeposit(25)">$25</button>
+                <button class="deposit-btn" onclick="selectDeposit(50)">$50</button>
+                <button class="deposit-btn" onclick="selectDeposit(100)">$100</button>
+                <button class="deposit-btn" onclick="selectDeposit(250)">$250</button>
+                <button class="deposit-btn" onclick="selectDeposit(500)">$500</button>
+            </div>
+            <div class="custom-deposit">
+                <span style="color: var(--text-secondary);">Or enter custom amount:</span>
+                <input type="number" id="custom-amount" placeholder="$" min="5" max="10000" />
+                <button class="btn btn-primary" onclick="depositCustom()">Deposit</button>
+            </div>
+        </section>
+
+        <!-- SERVICES PREVIEW -->
+        <section>
+            <h2 class="section-title">⚡ Available Services</h2>
+            <div class="services-grid" id="services-grid">
+                <!-- Lightning Tier -->
+                <div class="service-card lightning" onclick="showPricing(1)">
+                    <div class="service-header">
+                        <div class="service-name">Lightning 1K</div>
+                        <span class="service-badge badge-lightning">⚡ Fast</span>
+                    </div>
+                    <div class="service-price">$1.99<span>/1K plays</span></div>
+                    <div class="service-meta">
+                        <span>⏱️ 1-2 hours</span>
+                        <span>🌍 Global</span>
+                    </div>
+                    <div class="service-desc">Perfect for testing. Fast delivery with real engagement.</div>
+                </div>
+
+                <div class="service-card lightning" onclick="showPricing(2)">
+                    <div class="service-header">
+                        <div class="service-name">Lightning 5K</div>
+                        <span class="service-badge badge-lightning">⚡ Fast</span>
+                    </div>
+                    <div class="service-price">$8.99<span>/5K plays</span></div>
+                    <div class="service-meta">
+                        <span>⏱️ 2-4 hours</span>
+                        <span>🌍 Global</span>
+                    </div>
+                    <div class="service-desc">Most popular starter package.</div>
+                </div>
+
+                <div class="service-card lightning" onclick="showPricing(3)">
+                    <div class="service-header">
+                        <div class="service-name">Lightning 10K</div>
+                        <span class="service-badge badge-lightning">⚡ Fast</span>
+                    </div>
+                    <div class="service-price">$16.99<span>/10K plays</span></div>
+                    <div class="service-meta">
+                        <span>⏱️ 4-8 hours</span>
+                        <span>🌍 Global</span>
+                    </div>
+                    <div class="service-desc">Best value for growing artists.</div>
+                </div>
+
+                <!-- Stealth Tier -->
+                <div class="service-card stealth" onclick="showPricing(4)">
+                    <div class="service-header">
+                        <div class="service-name">Stealth 10K</div>
+                        <span class="service-badge badge-stealth">🔒 Organic</span>
+                    </div>
+                    <div class="service-price">$24.99<span>/10K plays</span></div>
+                    <div class="service-meta">
+                        <span>⏱️ 24-48 hours</span>
+                        <span>🎯 Targeted</span>
+                    </div>
+                    <div class="service-desc">Algorithmic-safe with drip delivery.</div>
+                </div>
+
+                <div class="service-card stealth" onclick="showPricing(5)">
+                    <div class="service-header">
+                        <div class="service-name">Stealth 25K</div>
+                        <span class="service-badge badge-stealth">🔒 Organic</span>
+                    </div>
+                    <div class="service-price">$54.99<span>/25K plays</span></div>
+                    <div class="service-meta">
+                        <span>⏱️ 3-5 days</span>
+                        <span>🎯 Targeted</span>
+                    </div>
+                    <div class="service-desc">Premium organic growth pattern.</div>
+                </div>
+
+                <div class="service-card stealth" onclick="showPricing(6)">
+                    <div class="service-header">
+                        <div class="service-name">Stealth 50K</div>
+                        <span class="service-badge badge-stealth">🔒 Organic</span>
+                    </div>
+                    <div class="service-price">$99.99<span>/50K plays</span></div>
+                    <div class="service-meta">
+                        <span>⏱️ 5-7 days</span>
+                        <span>🎯 Targeted</span>
+                    </div>
+                    <div class="service-desc">Professional-grade promotion.</div>
+                </div>
+
+                <!-- Ultra Tier -->
+                <div class="service-card ultra" onclick="showPricing(7)">
+                    <div class="service-header">
+                        <div class="service-name">Ultra 100K</div>
+                        <span class="service-badge badge-ultra">👑 Premium</span>
+                    </div>
+                    <div class="service-price">$179.99<span>/100K plays</span></div>
+                    <div class="service-meta">
+                        <span>⏱️ 7-14 days</span>
+                        <span>🇺🇸 USA/EU</span>
+                    </div>
+                    <div class="service-desc">Label-grade promotion with saves & follows.</div>
+                </div>
+
+                <div class="service-card ultra" onclick="showPricing(8)">
+                    <div class="service-header">
+                        <div class="service-name">Ultra 250K</div>
+                        <span class="service-badge badge-ultra">👑 Premium</span>
+                    </div>
+                    <div class="service-price">$399.99<span>/250K plays</span></div>
+                    <div class="service-meta">
+                        <span>⏱️ 14-21 days</span>
+                        <span>🇺🇸 USA/EU</span>
+                    </div>
+                    <div class="service-desc">Major label campaign simulation.</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- TOAST NOTIFICATION -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ==================== STATE ====================
+        let currentApiKey = null;
+        let currentBalance = 0;
+
+        // Check URL params on load
+        window.onload = function() {
+            const params = new URLSearchParams(window.location.search);
+            const key = params.get('key');
+            
+            if (key) {
+                document.getElementById('existing-key-input').value = key;
+                loadExistingKey();
+            }
+
+            // Check for deposit result
+            if (params.get('deposit') === 'success') {
+                showToast('✅ Deposit successful! Balance updated.');
+            } else if (params.get('deposit') === 'cancelled') {
+                showToast('Deposit cancelled', true);
+            }
+        };
+
+        // ==================== API KEY CREATION ====================
+        async function createKey() {
+            const email = document.getElementById('email-input').value.trim();
+            
+            if (!email || !email.includes('@')) {
+                showToast('Please enter a valid email', true);
+                return;
+            }
+
+            const btn = document.getElementById('create-key-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span>Creating...';
+
+            try {
+                const res = await fetch('/api/key/create?email=' + encodeURIComponent(email), {
+                    method: 'POST'
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    currentApiKey = data.apiKey;
+                    document.getElementById('new-api-key').textContent = data.apiKey;
+                    document.getElementById('key-result').classList.add('show');
+                    showToast('✅ API Key created!');
+                    updateUIForKey();
+                } else {
+                    showToast(data.error || 'Failed to create key', true);
+                }
+            } catch (e) {
+                showToast('Network error: ' + e.message, true);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Create API Key';
+            }
+        }
+
+        // ==================== LOAD EXISTING KEY ====================
+        async function loadExistingKey() {
+            const key = document.getElementById('existing-key-input').value.trim();
+            
+            if (!key) {
+                showToast('Please enter an API key', true);
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/key/validate?key=' + encodeURIComponent(key));
+                const data = await res.json();
+
+                if (data.valid) {
+                    currentApiKey = key;
+                    currentBalance = parseFloat(data.balance) || 0;
+                    showToast('✅ Key loaded!');
+                    updateUIForKey();
+                } else {
+                    showToast('Invalid API key', true);
+                }
+            } catch (e) {
+                showToast('Network error: ' + e.message, true);
+            }
+        }
+
+        // ==================== UI UPDATES ====================
+        function updateUIForKey() {
+            // Show balance
+            document.getElementById('balance-display').style.display = 'block';
+            document.getElementById('current-balance').textContent = '$' + currentBalance.toFixed(2);
+            
+            // Show dashboard link
+            const dashLink = document.getElementById('dashboard-link');
+            dashLink.style.display = 'block';
+            dashLink.href = '/customer?key=' + currentApiKey;
+
+            // Show deposit section
+            document.getElementById('deposit-section').style.display = 'block';
+        }
+
+        // ==================== DEPOSIT ====================
+        let selectedAmount = 0;
+
+        function selectDeposit(amount) {
+            selectedAmount = amount;
+            
+            // Update button styles
+            document.querySelectorAll('.deposit-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            event.target.classList.add('selected');
+            
+            // Start checkout
+            startCheckout(amount);
+        }
+
+        function depositCustom() {
+            const amount = parseFloat(document.getElementById('custom-amount').value);
+            
+            if (isNaN(amount) || amount < 5) {
+                showToast('Minimum deposit is $5', true);
+                return;
+            }
+            
+            if (amount > 10000) {
+                showToast('Maximum deposit is $10,000', true);
+                return;
+            }
+
+            startCheckout(amount);
+        }
+
+        async function startCheckout(amount) {
+            if (!currentApiKey) {
+                showToast('Please create or enter an API key first', true);
+                return;
+            }
+
+            showToast('⏳ Redirecting to Stripe...');
+
+            try {
+                const res = await fetch('/api/checkout/create-session?apiKey=' + encodeURIComponent(currentApiKey) + '&amount=' + amount, {
+                    method: 'POST'
+                });
+                const data = await res.json();
+
+                if (data.success && data.url) {
+                    window.location.href = data.url;
+                } else {
+                    showToast(data.error || 'Failed to create checkout', true);
+                }
+            } catch (e) {
+                showToast('Network error: ' + e.message, true);
+            }
+        }
+
+        // ==================== UTILITIES ====================
+        function copyKey() {
+            navigator.clipboard.writeText(currentApiKey);
+            showToast('📋 Key copied to clipboard!');
+        }
+
+        function showPricing(serviceId) {
+            if (!currentApiKey) {
+                showToast('Create an API key first to place orders', true);
+                document.getElementById('email-input').focus();
+                return;
+            }
+            
+            // Redirect to customer dashboard with service selected
+            window.location.href = '/customer?key=' + currentApiKey + '&service=' + serviceId;
+        }
+
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast' + (isError ? ' error' : '');
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

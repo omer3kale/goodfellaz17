@@ -33,10 +33,19 @@ public class DashboardPageController {
     }
 
     /**
-     * Root redirect to landing page.
+     * Checkout/onboarding page.
+     * URL: /checkout or /checkout?key=existing_key
+     */
+    @GetMapping("/checkout")
+    public String checkout(@RequestParam(required = false) String key) {
+        return "forward:/checkout.html";
+    }
+
+    /**
+     * Root redirect to checkout (main landing).
      */
     @GetMapping("/")
     public String home() {
-        return "forward:/index.html";
+        return "forward:/checkout.html";
     }
 }

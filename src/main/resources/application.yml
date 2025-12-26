@@ -90,6 +90,16 @@ spotify:
   client-secret: ${SPOTIFY_CLIENT_SECRET:}
   redirect-uri: ${SPOTIFY_REDIRECT_URI:https://goodfellaz17.onrender.com/callback}
 
+# Stripe Payment Configuration
+stripe:
+  secret-key: ${STRIPE_SECRET_KEY:sk_test_placeholder}
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_placeholder}
+  publishable-key: ${STRIPE_PUBLISHABLE_KEY:pk_test_placeholder}
+
+# App Configuration
+app:
+  base-url: ${APP_BASE_URL:https://goodfellaz17.onrender.com}
+
 # Actuator (Monitoring)
 management:
   endpoints:
