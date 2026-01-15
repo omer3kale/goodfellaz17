@@ -216,3 +216,40 @@ CREATE TABLE premium_accounts (
 
 CREATE INDEX idx_premium_accounts_expiry ON premium_accounts(premium_expiry);
 
+-- =============================================================================
+-- ORDER TASKS TABLE (for 15k delivery)
+-- =============================================================================
+CREATE TABLE order_tasks (
+    id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    order_id              UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    sequence_number       INTEGER NOT NULL,
+    quantity              INTEGER NOT NULL CHECK (quantity > 0 AND quantity <= 1000),
+    status                VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+    attempts              INTEGER NOT NULL DEFAULT 0,
+    max_attempts          INTEGER NOT NULL DEFAULT 3,
+    last_error            VARCHAR(1000),
+    proxy_node_id         UUID REFERENCES proxy_nodes(id) ON DELETE SET NULL,
+    execution_started_at  TIMESTAMP WITH TIME ZONE,
+    executed_at           TIMESTAMP WITH TIME ZONE,
+    scheduled_at          TIMESTAMP WITH TIME ZONE NOT NULL,
+    retry_after           TIMESTAMP WITH TIME ZONE,
+    created_at            TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    idempotency_token     VARCHAR(128) NOT NULL,
+    worker_id             VARCHAR(64),
+    refunded              BOOLEAN NOT NULL DEFAULT FALSE,
+    
+    CONSTRAINT uq_order_task_sequence UNIQUE (order_id, sequence_number),
+    CONSTRAINT uq_task_idempotency_token UNIQUE (idempotency_token)
+);
+
+CREATE INDEX idx_order_tasks_order_status ON order_tasks (order_id, status);
+CREATE INDEX idx_order_tasks_pending_scheduled ON order_tasks (scheduled_at ASC) WHERE status = 'PENDING';
+CREATE INDEX idx_order_tasks_failed_permanent ON order_tasks (created_at DESC) WHERE status = 'FAILED_PERMANENT';
+
+-- =============================================================================
+-- Add estimated_completion_at and task delivery columns to orders
+-- =============================================================================
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS estimated_completion_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS failed_permanent_plays INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS uses_task_delivery BOOLEAN NOT NULL DEFAULT FALSE;
+

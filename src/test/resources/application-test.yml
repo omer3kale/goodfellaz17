@@ -13,6 +13,13 @@ proxy:
   hybrid:
     enabled: false
 
+# Feature flags for tests
+goodfellaz17:
+  worker:
+    enabled: true
+  refund:
+    enabled: false  # Disable refunds in tests to avoid balance changes
+
 # Reduce logging noise in tests
 logging:
   level:

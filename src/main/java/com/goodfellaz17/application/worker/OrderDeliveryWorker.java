@@ -94,6 +94,13 @@ public class OrderDeliveryWorker {
     @Value("${goodfellaz17.worker.enabled:true}")
     private boolean workerEnabled;
     
+    /** 
+     * Feature flag to enable refunds on permanent failures.
+     * Default: true for real runs. Set to false for freeze tests.
+     */
+    @Value("${goodfellaz17.refund.enabled:true}")
+    private boolean refundEnabled;
+    
     // === Metrics ===
     private final AtomicLong totalTasksProcessed = new AtomicLong(0);
     private final AtomicLong totalTasksCompleted = new AtomicLong(0);
@@ -402,8 +409,9 @@ public class OrderDeliveryWorker {
                     log.error("TASK_PERMANENT_FAILURE | taskId={} | orderId={} | qty={} | error={}", 
                         task.getId(), task.getOrderId(), task.getQuantity(), errorMessage);
                     
-                    // Update order's dead-letter count
-                    return incrementOrderFailedPermanent(task.getOrderId(), task.getQuantity())
+                    // Update order's dead-letter count and process refund if enabled
+                    return incrementOrderFailedPermanentAndRefund(
+                            task.getId(), task.getOrderId(), task.getQuantity())
                         .thenReturn(failedTask);
                 } else {
                     totalTransientFailures.incrementAndGet();
@@ -438,8 +446,54 @@ public class OrderDeliveryWorker {
     }
     
     /**
-     * Increment order's failed_permanent_plays count atomically.
+     * Increment order's failed_permanent_plays count atomically AND process refund.
+     * 
+     * When refundEnabled=true:
+     * 1. Increment failed_permanent_plays on order
+     * 2. Load order to get userId and pricePerPlay
+     * 3. Atomically mark task as refunded + credit user balance + track on order
+     * 
+     * The refund operation is idempotent - if the task is already refunded,
+     * no additional credit occurs.
      */
+    private Mono<Void> incrementOrderFailedPermanentAndRefund(UUID taskId, UUID orderId, int failedPlays) {
+        return progressUpdater.atomicIncrementFailedPermanent(orderId, failedPlays)
+            .then(Mono.defer(() -> {
+                if (!refundEnabled) {
+                    log.debug("REFUND_SKIP_DISABLED | taskId={} | orderId={}", taskId, orderId);
+                    return Mono.empty();
+                }
+                
+                // Load order to get userId and calculate price per play
+                return orderRepository.findById(orderId)
+                    .flatMap(order -> {
+                        if (order.getPricePerUnit() == null || order.getUserId() == null) {
+                            log.warn("REFUND_SKIP_MISSING_DATA | taskId={} | orderId={} | pricePerUnit={} | userId={}", 
+                                taskId, orderId, order.getPricePerUnit(), order.getUserId());
+                            return Mono.empty();
+                        }
+                        
+                        return progressUpdater.atomicProcessRefund(
+                            taskId,
+                            orderId,
+                            order.getUserId(),
+                            failedPlays,
+                            order.getPricePerUnit()
+                        ).doOnNext(result -> {
+                            if (result.refundApplied()) {
+                                log.info("REFUND_APPLIED | taskId={} | orderId={} | userId={} | plays={} | amount={}", 
+                                    taskId, orderId, order.getUserId(), failedPlays, result.refundAmount());
+                            }
+                        }).then();
+                    });
+            }));
+    }
+    
+    /**
+     * Increment order's failed_permanent_plays count atomically.
+     * @deprecated Use incrementOrderFailedPermanentAndRefund instead
+     */
+    @Deprecated
     private Mono<Void> incrementOrderFailedPermanent(UUID orderId, int failedPlays) {
         return progressUpdater.atomicIncrementFailedPermanent(orderId, failedPlays)
             .then();
@@ -449,6 +503,11 @@ public class OrderDeliveryWorker {
      * Check if order is fully delivered and mark complete.
      * Takes the already-updated order from atomicIncrementDelivered to avoid
      * race conditions with concurrent task completions.
+     * 
+     * Status remains COMPLETED for both full and partial success.
+     * The internalNotes field captures details:
+     * - Full success: "Delivered: 2,000 | Failed: 0"
+     * - Partial success: "Delivered: 1,600 | Failed: 400 (PARTIAL) | Refunded: $0.80"
      */
     private Mono<Void> checkOrderCompletion(OrderEntity order) {
         // Order is complete when no remains left (all plays delivered or failed)
@@ -461,13 +520,28 @@ public class OrderDeliveryWorker {
             order.setCompletedAt(Instant.now());
             order.markNotNew();
             
-            String statusNote = String.format(
-                "Delivered: %,d | Failed permanent: %,d",
-                totalDelivered, totalFailed);
-            order.setInternalNotes(statusNote);
+            // Build status note with partial indicator and refund info
+            StringBuilder statusNote = new StringBuilder();
+            statusNote.append(String.format("Delivered: %,d | Failed: %,d", totalDelivered, totalFailed));
             
-            log.info("ORDER_COMPLETED | orderId={} | delivered={} | failedPermanent={}", 
-                order.getId(), totalDelivered, totalFailed);
+            if (totalFailed > 0) {
+                statusNote.append(" (PARTIAL)");
+                
+                // Include refund amount if available
+                if (order.getRefundAmount() != null && 
+                    order.getRefundAmount().compareTo(java.math.BigDecimal.ZERO) > 0) {
+                    statusNote.append(String.format(" | Refunded: $%.2f", order.getRefundAmount()));
+                }
+            }
+            
+            order.setInternalNotes(statusNote.toString());
+            
+            if (totalFailed > 0) {
+                log.warn("ORDER_COMPLETED_PARTIAL | orderId={} | delivered={} | failed={} | refund={}", 
+                    order.getId(), totalDelivered, totalFailed, order.getRefundAmount());
+            } else {
+                log.info("ORDER_COMPLETED | orderId={} | delivered={}", order.getId(), totalDelivered);
+            }
             
             return orderRepository.save(order).then();
         }

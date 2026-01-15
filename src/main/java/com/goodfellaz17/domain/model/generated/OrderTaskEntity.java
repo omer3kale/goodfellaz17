@@ -132,6 +132,14 @@ public class OrderTaskEntity implements Serializable, Persistable<UUID> {
     @Column("worker_id")
     private String workerId;
     
+    /**
+     * TRUE if balance was credited back for this failed task.
+     * Prevents double-refunds if failure path runs twice.
+     */
+    @NotNull
+    @Column("refunded")
+    private Boolean refunded = false;
+    
     @Transient
     private boolean isNew = true;
     
@@ -300,6 +308,7 @@ public class OrderTaskEntity implements Serializable, Persistable<UUID> {
     public Instant getCreatedAt() { return createdAt; }
     public String getIdempotencyToken() { return idempotencyToken; }
     public String getWorkerId() { return workerId; }
+    public Boolean getRefunded() { return refunded; }
     
     public TaskStatus getStatusEnum() {
         try {
@@ -327,6 +336,7 @@ public class OrderTaskEntity implements Serializable, Persistable<UUID> {
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public void setIdempotencyToken(String idempotencyToken) { this.idempotencyToken = idempotencyToken; }
     public void setWorkerId(String workerId) { this.workerId = workerId; }
+    public void setRefunded(Boolean refunded) { this.refunded = refunded; }
     
     // === Builder ===
     
