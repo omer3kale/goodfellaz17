@@ -150,6 +150,11 @@ public class OrderDeliveryWorker {
             return;
         }
         
+        // Track per-cycle stats for summary logging
+        final long cycleStartProcessed = totalTasksProcessed.get();
+        final long cycleStartCompleted = totalTasksCompleted.get();
+        final long cycleStartFailed = totalTasksFailed.get();
+        
         try {
             log.debug("WORKER_CYCLE_START | workerId={} | activeTasks={}", workerId, activeTaskCount.get());
             
@@ -160,7 +165,17 @@ public class OrderDeliveryWorker {
             taskRepository.findTasksReadyForWorker(now, orphanThreshold, BATCH_SIZE)
                 .flatMap(this::processTask, MAX_CONCURRENT_TASKS)
                 .doOnComplete(() -> {
-                    log.debug("WORKER_CYCLE_COMPLETE | processed={} | completed={} | failed={}",
+                    // Log per-cycle summary at INFO level
+                    long cycleProcessed = totalTasksProcessed.get() - cycleStartProcessed;
+                    long cycleCompleted = totalTasksCompleted.get() - cycleStartCompleted;
+                    long cycleFailed = totalTasksFailed.get() - cycleStartFailed;
+                    
+                    if (cycleProcessed > 0) {
+                        log.info("WORKER_CYCLE_SUMMARY | workerId={} | cycleProcessed={} | cycleCompleted={} | cycleFailed={} | activeTasks={}",
+                            workerId, cycleProcessed, cycleCompleted, cycleFailed, activeTaskCount.get());
+                    }
+                    
+                    log.debug("WORKER_CYCLE_COMPLETE | totalProcessed={} | totalCompleted={} | totalFailed={}",
                         totalTasksProcessed.get(), totalTasksCompleted.get(), totalTasksFailed.get());
                 })
                 .subscribe(

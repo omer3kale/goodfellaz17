@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -170,6 +171,95 @@ public class AdminOrderProgressController {
                 metrics.workerStartTime(),
                 Instant.now()))
             .map(ResponseEntity::ok);
+    }
+    
+    /**
+     * GET /api/admin/worker/metrics
+     * 
+     * Get lightweight worker metrics (no DB queries).
+     * This endpoint is cheap to call frequently for monitoring.
+     * 
+     * Example:
+     * curl http://localhost:8080/api/admin/worker/metrics | jq .
+     */
+    @GetMapping("/worker/metrics")
+    public ResponseEntity<WorkerMetricsResponse> getWorkerMetrics() {
+        OrderDeliveryWorker.WorkerMetrics m = deliveryWorker.getMetrics();
+        return ResponseEntity.ok(new WorkerMetricsResponse(
+            m.workerId(),
+            m.totalProcessed(),
+            m.totalCompleted(),
+            m.totalFailed(),
+            m.transientFailures(),
+            m.permanentFailures(),
+            m.totalRetries(),
+            m.recoveredOrphans(),
+            m.tasksRecoveredAfterStart(),
+            m.activeCount(),
+            m.isRunning(),
+            m.workerStartTime(),
+            Duration.between(m.workerStartTime(), Instant.now()).toSeconds()
+        ));
+    }
+    
+    /**
+     * GET /api/admin/orders/{orderId}/debug
+     * 
+     * Get detailed debug view of an order including:
+     * - Order fields (id, status, quantity, delivered, remains, timestamps)
+     * - Task status counts
+     * - Last 5 tasks with status and last_error
+     * 
+     * Example:
+     * curl http://localhost:8080/api/admin/orders/{orderId}/debug | jq .
+     */
+    @GetMapping("/orders/{orderId}/debug")
+    public Mono<ResponseEntity<OrderDebugResponse>> getOrderDebug(
+            @PathVariable UUID orderId) {
+        
+        return orderRepository.findById(orderId)
+            .flatMap(order -> 
+                // Get task counts by status
+                taskRepository.findByOrderIdOrderBySequenceNumberAsc(orderId)
+                    .collectList()
+                    .map(tasks -> {
+                        // Count by status
+                        Map<String, Long> statusCounts = tasks.stream()
+                            .collect(java.util.stream.Collectors.groupingBy(
+                                OrderTaskEntity::getStatus,
+                                java.util.stream.Collectors.counting()));
+                        
+                        // Last 5 tasks (most recent by sequence)
+                        List<TaskDebugInfo> lastTasks = tasks.stream()
+                            .sorted((a, b) -> Integer.compare(b.getSequenceNumber(), a.getSequenceNumber()))
+                            .limit(5)
+                            .map(t -> new TaskDebugInfo(
+                                t.getId(),
+                                t.getSequenceNumber(),
+                                t.getQuantity(),
+                                t.getStatus(),
+                                t.getAttempts(),
+                                t.getLastError(),
+                                t.getExecutionStartedAt()))
+                            .toList();
+                        
+                        return new OrderDebugResponse(
+                            order.getId(),
+                            order.getStatus(),
+                            order.getQuantity(),
+                            order.getDelivered(),
+                            order.getRemains(),
+                            order.getFailedPermanentPlays(),
+                            order.getCreatedAt(),
+                            order.getStartedAt(),
+                            order.getCompletedAt(),
+                            order.getEstimatedCompletionAt(),
+                            tasks.size(),
+                            statusCounts,
+                            lastTasks);
+                    }))
+            .map(ResponseEntity::ok)
+            .defaultIfEmpty(ResponseEntity.notFound().build());
     }
     
     // =========================================================================
@@ -439,5 +529,47 @@ public class AdminOrderProgressController {
         int totalFailedTasks,
         int totalFailedPlays,
         List<FailedTaskDetail> tasks
+    ) {}
+    
+    public record WorkerMetricsResponse(
+        String workerId,
+        long totalProcessed,
+        long totalCompleted,
+        long totalFailed,
+        long transientFailures,
+        long permanentFailures,
+        long totalRetries,
+        long recoveredOrphans,
+        long tasksRecoveredAfterStart,
+        int activeCount,
+        boolean isRunning,
+        Instant workerStartTime,
+        long uptimeSeconds
+    ) {}
+    
+    public record OrderDebugResponse(
+        UUID orderId,
+        String status,
+        int quantity,
+        int delivered,
+        int remains,
+        Integer failedPermanentPlays,
+        Instant createdAt,
+        Instant startedAt,
+        Instant completedAt,
+        Instant estimatedCompletionAt,
+        int totalTasks,
+        Map<String, Long> taskStatusCounts,
+        List<TaskDebugInfo> lastTasks
+    ) {}
+    
+    public record TaskDebugInfo(
+        UUID taskId,
+        int sequenceNumber,
+        int quantity,
+        String status,
+        int attempts,
+        String lastError,
+        Instant executionStartedAt
     ) {}
 }
