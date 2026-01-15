@@ -163,6 +163,7 @@ public class HybridProxyRouterV2 {
     
     /**
      * Get pool health status for a tier.
+     * Emits warnings if tier is degraded (success rate < 0.8 or load > 80%).
      */
     public Mono<PoolHealthStatus> getPoolHealth(ProxyTier tier) {
         return proxyRepository.findByTierAndStatus(tier.name(), ProxyStatus.ONLINE.name())
@@ -171,13 +172,25 @@ public class HybridProxyRouterV2 {
                 TierHealth health = tierHealthMap.get(tier);
                 int totalCapacity = proxies.stream().mapToInt(ProxyNodeEntity::getCapacity).sum();
                 int currentLoad = proxies.stream().mapToInt(ProxyNodeEntity::getCurrentLoad).sum();
+                double successRate = health.getSuccessRate();
+                double loadPercent = totalCapacity > 0 ? (double) currentLoad / totalCapacity * 100.0 : 0.0;
+                
+                // Emit warnings for degraded tier health
+                if (successRate < 0.8 && health.totalRequests > 10) {
+                    log.warn("PROXY_TIER_DEGRADED | tier={} | successRate={} | loadPercent={} | nodeCount={}",
+                        tier, String.format("%.2f", successRate), String.format("%.1f%%", loadPercent), proxies.size());
+                }
+                if (loadPercent > 80.0) {
+                    log.warn("PROXY_TIER_HIGH_LOAD | tier={} | successRate={} | loadPercent={} | nodeCount={}",
+                        tier, String.format("%.2f", successRate), String.format("%.1f%%", loadPercent), proxies.size());
+                }
                 
                 return new PoolHealthStatus(
                     tier,
                     proxies.size(),
                     totalCapacity,
                     currentLoad,
-                    health.getSuccessRate(),
+                    successRate,
                     health.getAvgLatencyMs(),
                     health.isCircuitOpen()
                 );
@@ -554,7 +567,7 @@ public class HybridProxyRouterV2 {
      */
     private static class TierHealth {
         private final ProxyTier tier;
-        private long totalRequests = 0;
+        long totalRequests = 0;  // Package-private for health check logging
         private long successfulRequests = 0;
         private long totalLatencyMs = 0;
         private int consecutiveFailures = 0;

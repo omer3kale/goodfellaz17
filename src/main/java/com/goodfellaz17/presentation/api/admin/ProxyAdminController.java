@@ -279,6 +279,64 @@ public class ProxyAdminController {
     }
     
     // =========================================================================
+    // POOL HEALTH
+    // =========================================================================
+    
+    /**
+     * Get health status for all proxy pool tiers.
+     * 
+     * GET /api/admin/proxies/health
+     * 
+     * Returns health metrics for each proxy tier including:
+     * - nodeCount: Number of ONLINE nodes
+     * - totalCapacity: Sum of all node capacities
+     * - currentLoad: Current total load across nodes
+     * - successRate: Recent success rate (0.0 - 1.0)
+     * - avgLatencyMs: Average latency in milliseconds
+     * - circuitOpen: Whether the circuit breaker is tripped
+     * - loadPercent: Calculated load percentage
+     * - healthy: Overall tier health status
+     * 
+     * Example:
+     * curl http://localhost:8080/api/admin/proxies/health | jq .
+     */
+    @GetMapping("/health")
+    public Flux<PoolHealthResponse> getPoolHealth() {
+        log.debug("Fetching pool health for all tiers");
+        return proxyRouter.getAllPoolHealth()
+            .map(PoolHealthResponse::from);
+    }
+    
+    /**
+     * Response DTO for pool health status.
+     */
+    public record PoolHealthResponse(
+        String tier,
+        int nodeCount,
+        int totalCapacity,
+        int currentLoad,
+        double loadPercent,
+        double successRate,
+        int avgLatencyMs,
+        boolean circuitOpen,
+        boolean healthy
+    ) {
+        public static PoolHealthResponse from(HybridProxyRouterV2.PoolHealthStatus status) {
+            return new PoolHealthResponse(
+                status.tier().name(),
+                status.nodeCount(),
+                status.totalCapacity(),
+                status.currentLoad(),
+                status.getLoadPercent(),
+                status.successRate(),
+                status.avgLatencyMs(),
+                status.circuitOpen(),
+                status.isHealthy()
+            );
+        }
+    }
+    
+    // =========================================================================
     // SMOKE TEST
     // =========================================================================
     
