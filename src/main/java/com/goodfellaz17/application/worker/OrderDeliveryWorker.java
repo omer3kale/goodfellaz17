@@ -3,6 +3,7 @@ package com.goodfellaz17.application.worker;
 import com.goodfellaz17.application.metrics.DeliveryMetrics;
 import com.goodfellaz17.application.testing.FailureInjectionService;
 import com.goodfellaz17.domain.model.generated.*;
+import com.goodfellaz17.infrastructure.persistence.OrderProgressUpdater;
 import com.goodfellaz17.infrastructure.persistence.generated.GeneratedOrderRepository;
 import com.goodfellaz17.infrastructure.persistence.generated.OrderTaskRepository;
 import com.goodfellaz17.infrastructure.proxy.generated.HybridProxyRouterV2;
@@ -65,7 +66,7 @@ public class OrderDeliveryWorker {
     private static final int BATCH_SIZE = 10;
     
     /** Seconds after which an EXECUTING task is considered orphaned */
-    private static final int ORPHAN_THRESHOLD_SECONDS = 120;
+    private static final int ORPHAN_THRESHOLD_SECONDS = 30;
     
     /** Maximum concurrent task executions */
     private static final int MAX_CONCURRENT_TASKS = 5;
@@ -75,6 +76,7 @@ public class OrderDeliveryWorker {
     
     private final OrderTaskRepository taskRepository;
     private final GeneratedOrderRepository orderRepository;
+    private final OrderProgressUpdater progressUpdater;
     private final HybridProxyRouterV2 proxyRouter;
     private final TransactionalOperator transactionalOperator;
     
@@ -115,10 +117,12 @@ public class OrderDeliveryWorker {
     public OrderDeliveryWorker(
             OrderTaskRepository taskRepository,
             GeneratedOrderRepository orderRepository,
+            OrderProgressUpdater progressUpdater,
             HybridProxyRouterV2 proxyRouter,
             TransactionalOperator transactionalOperator) {
         this.taskRepository = taskRepository;
         this.orderRepository = orderRepository;
+        this.progressUpdater = progressUpdater;
         this.proxyRouter = proxyRouter;
         this.transactionalOperator = transactionalOperator;
         this.workerId = generateWorkerId();
@@ -242,9 +246,12 @@ public class OrderDeliveryWorker {
         // Get order for geo targeting
         return orderRepository.findById(task.getOrderId())
             .flatMap(order -> {
+                // Pass geoProfile as-is; router handles normalization of WORLDWIDE/WW/null/etc
+                String geo = order.getGeoProfile();
+                
                 RoutingRequest request = RoutingRequest.builder()
                     .operation(OperationType.PLAY_DELIVERY)
-                    .targetCountry(order.getGeoProfile() != null ? order.getGeoProfile() : "WORLDWIDE")
+                    .targetCountry(geo)  // Router normalizes WORLDWIDE, WW, null, blank, etc
                     .quantity(task.getQuantity())
                     .build();
                 
@@ -329,14 +336,14 @@ public class OrderDeliveryWorker {
         return transactionalOperator.transactional(
             // 1. Mark task completed
             taskRepository.completeTask(task.getId(), Instant.now())
-                // 2. Update order delivered count
+                // 2. Update order delivered count (atomic SQL - prevents lost updates)
                 .flatMap(completedTask -> 
                     incrementOrderDelivered(task.getOrderId(), delivery.deliveredPlays())
-                        .thenReturn(completedTask))
-                // 3. Check if order is fully delivered
-                .flatMap(completedTask -> 
-                    checkOrderCompletion(task.getOrderId())
-                        .thenReturn(completedTask))
+                        .map(updatedOrder -> new TaskAndOrder(completedTask, updatedOrder)))
+                // 3. Check if order is fully delivered (using just-updated order)
+                .flatMap(taskAndOrder -> 
+                    checkOrderCompletion(taskAndOrder.order)
+                        .thenReturn(taskAndOrder.task))
         )
         .map(completedTask -> {
             totalTasksCompleted.incrementAndGet();
@@ -350,6 +357,9 @@ public class OrderDeliveryWorker {
             return new TaskExecutionResult(task.getId(), true, delivery.deliveredPlays(), null);
         });
     }
+    
+    /** Helper record to pass both task and order through the reactive chain */
+    private record TaskAndOrder(OrderTaskEntity task, OrderEntity order) {}
     
     /**
      * Handle task execution failure.
@@ -404,73 +414,49 @@ public class OrderDeliveryWorker {
     // =========================================================================
     
     /**
-     * Increment order's delivered count atomically.
+     * Increment order's delivered count atomically using SQL UPDATE.
+     * This prevents lost updates when multiple tasks complete concurrently.
+     * Returns the updated order for completion checking.
      */
     private Mono<OrderEntity> incrementOrderDelivered(UUID orderId, int deliveredPlays) {
-        return orderRepository.findById(orderId)
-            .flatMap(order -> {
-                int newDelivered = order.getDelivered() + deliveredPlays;
-                int newRemains = Math.max(0, order.getQuantity() - newDelivered);
-                
-                order.setDelivered(newDelivered);
-                order.setRemains(newRemains);
-                order.markNotNew();
-                
-                return orderRepository.save(order);
-            });
+        return progressUpdater.atomicIncrementDelivered(orderId, deliveredPlays);
     }
     
     /**
-     * Increment order's failed_permanent_plays count.
+     * Increment order's failed_permanent_plays count atomically.
      */
     private Mono<Void> incrementOrderFailedPermanent(UUID orderId, int failedPlays) {
-        return orderRepository.findById(orderId)
-            .flatMap(order -> {
-                Integer current = order.getFailedPermanentPlays();
-                order.setFailedPermanentPlays((current != null ? current : 0) + failedPlays);
-                order.markNotNew();
-                return orderRepository.save(order);
-            })
+        return progressUpdater.atomicIncrementFailedPermanent(orderId, failedPlays)
             .then();
     }
     
     /**
      * Check if order is fully delivered and mark complete.
+     * Takes the already-updated order from atomicIncrementDelivered to avoid
+     * race conditions with concurrent task completions.
      */
-    private Mono<Void> checkOrderCompletion(UUID orderId) {
-        return taskRepository.getProgressSummary(orderId)
-            .flatMap(summary -> {
-                // Order is complete when no active tasks remain
-                if (summary.getActiveTasks() == 0) {
-                    return orderRepository.findById(orderId)
-                        .flatMap(order -> {
-                            int totalDelivered = summary.getDeliveredQuantity().intValue();
-                            int totalFailed = summary.getFailedPermanentQuantity().intValue();
-                            
-                            order.setStatus(OrderStatus.COMPLETED.name());
-                            order.setDelivered(totalDelivered);
-                            order.setRemains(0);
-                            order.setCompletedAt(Instant.now());
-                            order.markNotNew();
-                            
-                            // Calculate final status message
-                            String statusNote = String.format(
-                                "Delivered: %,d | Failed permanent: %,d | Tasks: %d completed, %d failed",
-                                totalDelivered, totalFailed, 
-                                summary.getCompletedTasks(), summary.getFailedPermanentTasks());
-                            order.setInternalNotes(statusNote);
-                            
-                            log.info("ORDER_COMPLETED | orderId={} | delivered={} | failedPermanent={} | " +
-                                     "completedTasks={} | failedTasks={}", 
-                                orderId, totalDelivered, totalFailed,
-                                summary.getCompletedTasks(), summary.getFailedPermanentTasks());
-                            
-                            return orderRepository.save(order);
-                        });
-                }
-                return Mono.empty();
-            })
-            .then();
+    private Mono<Void> checkOrderCompletion(OrderEntity order) {
+        // Order is complete when no remains left (all plays delivered or failed)
+        if (order.getRemains() <= 0) {
+            int totalDelivered = order.getDelivered();
+            int totalFailed = order.getFailedPermanentPlays() != null 
+                ? order.getFailedPermanentPlays() : 0;
+            
+            order.setStatus(OrderStatus.COMPLETED.name());
+            order.setCompletedAt(Instant.now());
+            order.markNotNew();
+            
+            String statusNote = String.format(
+                "Delivered: %,d | Failed permanent: %,d",
+                totalDelivered, totalFailed);
+            order.setInternalNotes(statusNote);
+            
+            log.info("ORDER_COMPLETED | orderId={} | delivered={} | failedPermanent={}", 
+                order.getId(), totalDelivered, totalFailed);
+            
+            return orderRepository.save(order).then();
+        }
+        return Mono.empty();
     }
     
     // =========================================================================

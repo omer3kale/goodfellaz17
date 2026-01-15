@@ -153,4 +153,9 @@ public interface OrderRepository extends ReactiveCrudRepository<OrderEntity, UUI
         LIMIT :limit
         """)
     Flux<Object[]> topServicesByOrderCount(int limit);
+
+    // ==================== ATOMIC DELIVERY UPDATE ====================
+    // NOTE: Atomic increment operations moved to OrderProgressUpdater service
+    // because Spring Data R2DBC @Query doesn't support RETURNING or @Modifying well.
+    // See: OrderProgressUpdater.atomicIncrementDelivered() and atomicIncrementFailedPermanent()
 }

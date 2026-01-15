@@ -55,6 +55,9 @@ public class HybridProxyRouterV2 {
     private final Map<ProxyTier, TierHealth> tierHealthMap = new ConcurrentHashMap<>();
     private final Map<ProxyTier, Long> selectionCounts = new ConcurrentHashMap<>();
     
+    /** Tracks which tiers actually have ONLINE nodes in the database */
+    private final Set<ProxyTier> availableTiers = ConcurrentHashMap.newKeySet();
+    
     public HybridProxyRouterV2(GeneratedProxyNodeRepository proxyRepository) {
         this.proxyRepository = proxyRepository;
         
@@ -73,6 +76,30 @@ public class HybridProxyRouterV2 {
             tierHealthMap.put(tier, new TierHealth(tier));
             selectionCounts.put(tier, 0L);
         }
+        
+        // Initialize available tiers from DB (async, will be ready by first request)
+        refreshAvailableTiers();
+    }
+    
+    /**
+     * Refresh the set of tiers that have ONLINE nodes in the database.
+     * Called on startup and can be called periodically for dynamic updates.
+     */
+    public void refreshAvailableTiers() {
+        proxyRepository.findDistinctTiers()
+            .collectList()
+            .doOnNext(tiers -> {
+                availableTiers.clear();
+                for (String tierName : tiers) {
+                    try {
+                        availableTiers.add(ProxyTier.valueOf(tierName));
+                    } catch (IllegalArgumentException e) {
+                        log.warn("Unknown tier in database: {}", tierName);
+                    }
+                }
+                log.info("PROXY_TIERS_AVAILABLE | tiers={}", availableTiers);
+            })
+            .subscribe();
     }
     
     // =========================================================================
@@ -223,11 +250,33 @@ public class HybridProxyRouterV2 {
     }
     
     private Flux<ProxyNodeEntity> getCandidates(ProxyTier tier, String targetCountry) {
-        if (targetCountry != null && !targetCountry.isBlank()) {
-            return proxyRepository.findAvailableByCountryAndTier(
-                targetCountry, tier.name(), 50);
+        String normalizedCountry = normalizeGeoProfile(targetCountry);
+        
+        // No country filter for worldwide
+        if (normalizedCountry == null) {
+            return proxyRepository.findAvailableByTier(tier.name(), 50);
         }
-        return proxyRepository.findAvailableByTier(tier.name(), 50);
+        return proxyRepository.findAvailableByCountryAndTier(
+            normalizedCountry, tier.name(), 50);
+    }
+    
+    /**
+     * Normalize geo profile to standard format.
+     * Returns null for WORLDWIDE (no country filter).
+     * Handles legacy values like "WW" or empty strings.
+     */
+    private String normalizeGeoProfile(String geoProfile) {
+        if (geoProfile == null || geoProfile.isBlank()) {
+            return null;  // WORLDWIDE
+        }
+        String upper = geoProfile.trim().toUpperCase();
+        // Treat WORLDWIDE, WW, GLOBAL, or any unknown as no country filter
+        if ("WORLDWIDE".equals(upper) || "WW".equals(upper) 
+                || "GLOBAL".equals(upper) || "ALL".equals(upper)) {
+            return null;  // WORLDWIDE
+        }
+        // Return the normalized country code
+        return upper;
     }
     
     private ScoredProxy scoreProxy(ProxyNodeEntity proxy, RoutingRequest request) {
@@ -288,29 +337,48 @@ public class HybridProxyRouterV2 {
     }
     
     private Optional<ProxyTier> findBestAvailableTier(ProxyTier preferred, ProxyTier minimum) {
-        // Try preferred first
-        if (preferred.meetsMinimum(minimum) && !tierHealthMap.get(preferred).isCircuitOpen()) {
+        // Only consider tiers that actually have nodes in the database
+        // This prevents selecting ISP/TOR when they have no proxies
+        
+        // Try preferred first (if it has nodes and circuit is closed)
+        if (preferred.meetsMinimum(minimum) 
+                && availableTiers.contains(preferred)
+                && !tierHealthMap.get(preferred).isCircuitOpen()) {
             return Optional.of(preferred);
         }
         
-        // Fall back to higher tiers
+        // Fall back to other tiers that have nodes (in quality order)
         for (ProxyTier tier : ProxyTier.values()) {
-            if (tier.meetsMinimum(minimum) && !tierHealthMap.get(tier).isCircuitOpen()) {
+            if (tier.meetsMinimum(minimum) 
+                    && availableTiers.contains(tier)
+                    && !tierHealthMap.get(tier).isCircuitOpen()) {
                 return Optional.of(tier);
             }
         }
         
-        // Last resort - use minimum even if circuit is open
-        return Optional.of(minimum);
+        // Circuit breaker fallback: try any tier with nodes (even if circuit is open)
+        for (ProxyTier tier : ProxyTier.values()) {
+            if (tier.meetsMinimum(minimum) && availableTiers.contains(tier)) {
+                log.warn("TIER_FALLBACK | Using tier {} despite circuit state (no better option)", tier);
+                return Optional.of(tier);
+            }
+        }
+        
+        // No tiers available with nodes
+        log.error("NO_TIERS_AVAILABLE | minimum={} | availableTiers={}", minimum, availableTiers);
+        return Optional.empty();
     }
     
     private ProxyTier getPreferredTier(OperationType operation) {
+        // Prefer tiers that exist in our database (DATACENTER, RESIDENTIAL, MOBILE)
+        // ISP and TOR are in enum but not seeded in current DB
         return switch (operation) {
             case ACCOUNT_CREATION -> ProxyTier.RESIDENTIAL;
             case STREAMING -> ProxyTier.DATACENTER;
-            case PLAYLIST_ADD -> ProxyTier.ISP;
-            case FOLLOW -> ProxyTier.ISP;
+            case PLAYLIST_ADD -> ProxyTier.RESIDENTIAL;  // ISP not in DB, use RESIDENTIAL
+            case FOLLOW -> ProxyTier.RESIDENTIAL;  // ISP not in DB, use RESIDENTIAL
             case SAVE -> ProxyTier.DATACENTER;
+            case PLAY_DELIVERY -> ProxyTier.DATACENTER;  // 15k path - prefer datacenter
             default -> ProxyTier.DATACENTER;
         };
     }

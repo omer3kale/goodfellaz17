@@ -147,8 +147,9 @@ check_response() {
     local expected_min="${2:-200}"
     local expected_max="${3:-299}"
     
-    local http_code=$(echo "$response" | tail -1)
-    local body=$(echo "$response" | head -n -1)
+    # Extract HTTP code (last line) and body (all but last line) - macOS compatible
+    local http_code=$(echo "$response" | sed -n '$p')
+    local body=$(echo "$response" | sed '$d')
     
     if [[ "$http_code" -ge "$expected_min" && "$http_code" -le "$expected_max" ]]; then
         echo "$body"
@@ -344,7 +345,7 @@ capacity=$(check_response "$capacity_resp") || {
 }
 
 healthy_proxies=$(echo "$capacity" | jq -r '.healthyProxyCount // 0')
-can_accept_15k=$(echo "$capacity" | jq -r '.canAccept15k // false')
+can_accept_15k=$(echo "$capacity" | jq -r '.canAccept15kOrder // false')
 
 log "Healthy proxies: $healthy_proxies"
 log "Can accept 15k: $can_accept_15k"

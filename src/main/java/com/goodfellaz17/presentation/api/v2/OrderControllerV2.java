@@ -53,18 +53,21 @@ public class OrderControllerV2 {
     private final GeneratedOrderRepository orderRepository;
     private final GeneratedBalanceTransactionRepository transactionRepository;
     private final CapacityService capacityService;
+    private final com.goodfellaz17.application.service.TaskGenerationService taskGenerationService;
     
     public OrderControllerV2(
             GeneratedUserRepository userRepository,
             GeneratedServiceRepository serviceRepository,
             GeneratedOrderRepository orderRepository,
             GeneratedBalanceTransactionRepository transactionRepository,
-            CapacityService capacityService) {
+            CapacityService capacityService,
+            com.goodfellaz17.application.service.TaskGenerationService taskGenerationService) {
         this.userRepository = userRepository;
         this.serviceRepository = serviceRepository;
         this.orderRepository = orderRepository;
         this.transactionRepository = transactionRepository;
         this.capacityService = capacityService;
+        this.taskGenerationService = taskGenerationService;
     }
     
     /**
@@ -305,6 +308,7 @@ public class OrderControllerV2 {
                         HttpStatus.PAYMENT_REQUIRED, 
                         "Balance deduction failed - concurrent modification detected")))
                     .then(orderRepository.save(order))
+                    .map(savedOrder -> savedOrder.markNotNew())  // Mark as existing for future saves
                     .flatMap(savedOrder -> {
                         BalanceTransactionEntity transaction = BalanceTransactionEntity.builder()
                             .userId(user.getId())
@@ -321,6 +325,22 @@ public class OrderControllerV2 {
                             .build();
                         return transactionRepository.save(transaction)
                             .thenReturn(savedOrder);
+                    })
+                    .flatMap(savedOrder -> {
+                        // Generate tasks for orders that need task-based delivery
+                        if (taskGenerationService.shouldUseTaskDelivery(savedOrder.getQuantity())) {
+                            log.info("Generating tasks for order {} (quantity={})", 
+                                savedOrder.getId(), savedOrder.getQuantity());
+                            savedOrder.setUsesTaskDelivery(true);
+                            savedOrder.markNotNew();  // Mark as existing for UPDATE instead of INSERT
+                            return orderRepository.save(savedOrder)
+                                .flatMap(taskOrder -> taskGenerationService.generateTasksForOrder(taskOrder)
+                                    .count()
+                                    .doOnSuccess(count -> log.info(
+                                        "Generated {} tasks for order {}", count, taskOrder.getId()))
+                                    .thenReturn(taskOrder));
+                        }
+                        return Mono.just(savedOrder);
                     })
                     .map(savedOrder -> toResponse(savedOrder, service.getDisplayName()));
             });

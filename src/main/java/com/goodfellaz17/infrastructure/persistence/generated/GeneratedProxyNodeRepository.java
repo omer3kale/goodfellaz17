@@ -63,6 +63,13 @@ public interface GeneratedProxyNodeRepository extends R2dbcRepository<ProxyNodeE
      */
     Mono<Long> countByStatus(String status);
     
+    /**
+     * Find distinct tiers that have ONLINE nodes with capacity.
+     * Used to determine which ProxyTier enum values are actually backed by data.
+     */
+    @Query("SELECT DISTINCT tier FROM proxy_nodes WHERE status = 'ONLINE' AND current_load < capacity")
+    Flux<String> findDistinctTiers();
+    
     // === Custom Queries for Proxy Selection ===
     
     /**

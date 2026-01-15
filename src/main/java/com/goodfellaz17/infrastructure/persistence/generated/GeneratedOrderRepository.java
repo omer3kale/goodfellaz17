@@ -152,4 +152,9 @@ public interface GeneratedOrderRepository extends R2dbcRepository<OrderEntity, U
      * Check if an order with this idempotency key exists.
      */
     Mono<Boolean> existsByExternalOrderId(String externalOrderId);
+    
+    // === Atomic Delivery Updates ===
+    // NOTE: Atomic increment operations moved to OrderProgressUpdater service
+    // because Spring Data R2DBC @Query + @Modifying doesn't work well for UPDATE statements.
+    // See: OrderProgressUpdater.atomicIncrementDelivered() and atomicIncrementFailedPermanent()
 }
