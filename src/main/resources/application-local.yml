@@ -1,0 +1,151 @@
+# =============================================================================
+# GOODFELLAZ17 - Local Development Profile
+# =============================================================================
+# 
+# This profile is optimized for running from your IDE with minimal friction.
+# 
+# Prerequisites:
+#   1. Docker container running: docker-compose up -d postgres
+#   2. Java 17+ installed
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# IDE RUN CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# IntelliJ IDEA / VS Code:
+#   1. Create a Run Configuration for GoodfellazApplication
+#   2. Set these VM options (for Java 17 module access):
+#
+#      -Dspring.profiles.active=local
+#      --add-opens=java.base/java.lang=ALL-UNNAMED
+#      --add-opens=java.base/java.util=ALL-UNNAMED
+#      --add-opens=java.base/java.time=ALL-UNNAMED
+#
+#   3. Optional: Set working directory to project root
+#
+# Maven command line:
+#   export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+#   SPRING_PROFILES_ACTIVE=local mvn spring-boot:run -DskipTests
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# AUTO-SEEDED TEST DATA (by LocalDevSeeder)
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# On startup, LocalDevSeeder automatically creates:
+#   • Test User:    localdev@goodfellaz17.test
+#   • API Key:      test-api-key-local-dev-12345
+#   • Balance:      $1000.00 (RESELLER tier)
+#   • Service:      spotify_plays (id: 3c1cb593-85a7-4375-8092-d39c00399a7b)
+#   • Proxies:      5 DATACENTER + 3 ISP with realistic metrics
+#
+# Quick Test Commands:
+#   curl http://localhost:8080/api/admin/capacity | jq .
+#   curl -H "X-Api-Key: test-api-key-local-dev-12345" \
+#        http://localhost:8080/api/v2/orders/balance | jq .
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+
+spring:
+  main:
+    allow-bean-definition-overriding: true
+    
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/goodfellaz17
+    username: goodfellaz17
+    password: localdev123
+    pool:
+      initial-size: 2
+      max-size: 10
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# LOGGING CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════════
+# 
+# com.goodfellaz17: DEBUG - See your code's detailed execution
+# Spring/R2DBC: INFO - Keep framework noise low
+# Selenium: WARN - Suppress browser driver verbosity
+
+logging:
+  level:
+    root: INFO
+    com.goodfellaz17: DEBUG
+    com.goodfellaz17.infrastructure.config.LocalDevSeeder: INFO
+    org.springframework: INFO
+    org.springframework.r2dbc: INFO
+    org.springframework.data.r2dbc: INFO
+    io.r2dbc.postgresql: INFO
+    reactor.netty: WARN
+    org.openqa.selenium: WARN
+    io.netty: WARN
+  pattern:
+    console: "%clr(%d{HH:mm:ss.SSS}){faint} %clr(%5p){magenta} %clr(%-40.40logger{39}){cyan} : %m%n"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# BOT EXECUTOR - Limited concurrency for local testing
+# ═══════════════════════════════════════════════════════════════════════════════
+
+bot:
+  executor:
+    max-concurrent: 10
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DISABLE EXTERNAL PROXY PROVIDERS (use seeded mock pool)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+proxy:
+  brightdata:
+    enabled: false
+  soax:
+    enabled: false
+  tor:
+    enabled: false
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# LOCAL STRIPE (test mode)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+stripe:
+  secret-key: sk_test_localdev_placeholder
+  webhook-secret: whsec_localdev_placeholder
+  publishable-key: pk_test_localdev_placeholder
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 15K DELIVERY SYSTEM - Development Configuration
+# ═══════════════════════════════════════════════════════════════════════════════
+# 
+# TIME COMPRESSION: 720x speed (72 hours real → 6 minutes dev)
+# This allows testing the full delivery pipeline quickly.
+#
+# CHAOS INJECTION: Available via /api/admin/testing/* endpoints
+# Only loads with @Profile("local", "dev", "test") - safe!
+
+goodfellaz17:
+  delivery:
+    # TIME COMPRESSION - 720x faster for testing
+    time-multiplier: 720
+    
+    # Task sizing (same as production)
+    target-task-size: 400
+    min-task-size: 300
+    max-task-size: 500
+    
+    # Faster thresholds for testing
+    orphan-threshold-seconds: 30      # 2 min prod → 30s dev
+    retry-backoff-base-seconds: 5     # 30s prod → 5s dev
+    
+  worker:
+    # Faster worker for dev
+    interval-ms: 1000                 # 10s prod → 1s dev
+    batch-size: 20
+    worker-id-prefix: "dev-worker"
+    
+  chaos:
+    # Chaos injection is AVAILABLE but requires explicit enable
+    available: true
+    # Fail-safe: auto-disable chaos after 30 minutes
+    auto-disable-after-minutes: 30
+
+  production-guards:
+    # CRITICAL: These are OFF in local
+    enforce-real-timing: false        # TRUE in prod!
+    block-chaos-injection: false      # TRUE in prod!

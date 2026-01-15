@@ -1,0 +1,573 @@
+package com.goodfellaz17.application.worker;
+
+import com.goodfellaz17.application.metrics.DeliveryMetrics;
+import com.goodfellaz17.application.testing.FailureInjectionService;
+import com.goodfellaz17.domain.model.generated.*;
+import com.goodfellaz17.infrastructure.persistence.generated.GeneratedOrderRepository;
+import com.goodfellaz17.infrastructure.persistence.generated.OrderTaskRepository;
+import com.goodfellaz17.infrastructure.proxy.generated.HybridProxyRouterV2;
+import com.goodfellaz17.infrastructure.proxy.generated.HybridProxyRouterV2.ProxySelection;
+import com.goodfellaz17.infrastructure.proxy.generated.HybridProxyRouterV2.RoutingRequest;
+import com.goodfellaz17.infrastructure.proxy.generated.HybridProxyRouterV2.ProxyResult;
+import com.goodfellaz17.infrastructure.proxy.generated.HybridProxyRouterV2.OperationType;
+import io.micrometer.core.instrument.Timer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.reactive.TransactionalOperator;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
+
+import java.net.InetAddress;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+
+/**
+ * OrderDeliveryWorker - The heart of the 15k delivery guarantee.
+ * 
+ * Runs on a schedule and:
+ * 1. Picks up PENDING tasks that are ready (past scheduled time)
+ * 2. Picks up FAILED_RETRYING tasks past their retry delay
+ * 3. Recovers orphaned EXECUTING tasks (worker crashed mid-execution)
+ * 4. For each task:
+ *    - Claims it atomically
+ *    - Selects a proxy via HybridProxyRouterV2
+ *    - Executes the play delivery (simulated for now)
+ *    - On success: marks COMPLETED, increments order.delivered
+ *    - On failure: marks FAILED_RETRYING with backoff, or FAILED_PERMANENT after max retries
+ * 5. When all tasks complete: marks order COMPLETED
+ * 
+ * Recovery guarantees:
+ * - Orphaned tasks are detected after ORPHAN_THRESHOLD_SECONDS
+ * - Failed tasks use exponential backoff (30s, 60s, 120s)
+ * - After 3 failures: task goes to dead-letter queue
+ * - Order still completes even with dead-letter tasks (partial success logged)
+ * 
+ * @author goodfellaz17
+ * @since 1.0.0
+ */
+@Component
+public class OrderDeliveryWorker {
+    
+    private static final Logger log = LoggerFactory.getLogger(OrderDeliveryWorker.class);
+    
+    // === Configuration ===
+    
+    /** How many tasks to pick up per worker cycle */
+    private static final int BATCH_SIZE = 10;
+    
+    /** Seconds after which an EXECUTING task is considered orphaned */
+    private static final int ORPHAN_THRESHOLD_SECONDS = 120;
+    
+    /** Maximum concurrent task executions */
+    private static final int MAX_CONCURRENT_TASKS = 5;
+    
+    /** Simulated execution time per task (ms) */
+    private static final int SIMULATED_EXECUTION_MS = 500;
+    
+    private final OrderTaskRepository taskRepository;
+    private final GeneratedOrderRepository orderRepository;
+    private final HybridProxyRouterV2 proxyRouter;
+    private final TransactionalOperator transactionalOperator;
+    
+    /** Unique worker ID for this instance (hostname + random suffix) */
+    private final String workerId;
+    
+    /** Flag to prevent concurrent worker cycles */
+    private final AtomicBoolean isRunning = new AtomicBoolean(false);
+    
+    /** Active profile */
+    @Value("${spring.profiles.active:prod}")
+    private String activeProfile;
+    
+    /** Feature flag to enable/disable worker */
+    @Value("${goodfellaz17.worker.enabled:true}")
+    private boolean workerEnabled;
+    
+    // === Metrics ===
+    private final AtomicLong totalTasksProcessed = new AtomicLong(0);
+    private final AtomicLong totalTasksCompleted = new AtomicLong(0);
+    private final AtomicLong totalTasksFailed = new AtomicLong(0);
+    private final AtomicLong totalTransientFailures = new AtomicLong(0);
+    private final AtomicLong totalPermanentFailures = new AtomicLong(0);
+    private final AtomicLong totalRetries = new AtomicLong(0);
+    private final AtomicLong recoveredOrphans = new AtomicLong(0);
+    private final AtomicInteger activeTaskCount = new AtomicInteger(0);
+    
+    /** Timestamp when worker started (for tracking restart recovery) */
+    private final Instant workerStartTime = Instant.now();
+    
+    /** Count of tasks recovered after this worker started (orphan recovery) */
+    private final AtomicLong tasksRecoveredAfterStart = new AtomicLong(0);
+    
+    /** Failure injection service (only active in dev/local) */
+    @Autowired(required = false)
+    private FailureInjectionService failureInjectionService;
+    
+    public OrderDeliveryWorker(
+            OrderTaskRepository taskRepository,
+            GeneratedOrderRepository orderRepository,
+            HybridProxyRouterV2 proxyRouter,
+            TransactionalOperator transactionalOperator) {
+        this.taskRepository = taskRepository;
+        this.orderRepository = orderRepository;
+        this.proxyRouter = proxyRouter;
+        this.transactionalOperator = transactionalOperator;
+        this.workerId = generateWorkerId();
+        
+        log.info("OrderDeliveryWorker initialized | workerId={}", workerId);
+    }
+    
+    // =========================================================================
+    // SCHEDULED WORKER
+    // =========================================================================
+    
+    /**
+     * Main worker loop - runs every 10 seconds.
+     * Uses fixedDelay to prevent overlapping executions.
+     */
+    @Scheduled(fixedDelayString = "${goodfellaz17.worker.interval-ms:10000}")
+    public void processTaskBatch() {
+        if (!workerEnabled) {
+            return;
+        }
+        
+        // Prevent concurrent executions
+        if (!isRunning.compareAndSet(false, true)) {
+            log.debug("Worker cycle skipped - previous cycle still running");
+            return;
+        }
+        
+        try {
+            log.debug("WORKER_CYCLE_START | workerId={} | activeTasks={}", workerId, activeTaskCount.get());
+            
+            Instant now = Instant.now();
+            Instant orphanThreshold = now.minusSeconds(ORPHAN_THRESHOLD_SECONDS);
+            
+            // Find tasks ready for execution
+            taskRepository.findTasksReadyForWorker(now, orphanThreshold, BATCH_SIZE)
+                .flatMap(this::processTask, MAX_CONCURRENT_TASKS)
+                .doOnComplete(() -> {
+                    log.debug("WORKER_CYCLE_COMPLETE | processed={} | completed={} | failed={}",
+                        totalTasksProcessed.get(), totalTasksCompleted.get(), totalTasksFailed.get());
+                })
+                .subscribe(
+                    result -> {}, // Success handled in processTask
+                    error -> log.error("WORKER_CYCLE_ERROR | error={}", error.getMessage(), error)
+                );
+        } finally {
+            // Release lock after a small delay to let async operations start
+            Mono.delay(Duration.ofMillis(100))
+                .subscribe(v -> isRunning.set(false));
+        }
+    }
+    
+    // =========================================================================
+    // TASK PROCESSING
+    // =========================================================================
+    
+    /**
+     * Process a single task: claim, execute, update.
+     */
+    private Mono<TaskExecutionResult> processTask(OrderTaskEntity task) {
+        activeTaskCount.incrementAndGet();
+        totalTasksProcessed.incrementAndGet();
+        
+        // Track orphan recovery
+        boolean isOrphanRecovery = TaskStatus.EXECUTING.name().equals(task.getStatus());
+        if (isOrphanRecovery) {
+            recoveredOrphans.incrementAndGet();
+            tasksRecoveredAfterStart.incrementAndGet();
+            log.info("ORPHAN_RECOVERY | taskId={} | orderId={} | originalWorker={}", 
+                task.getId(), task.getOrderId(), task.getWorkerId());
+        }
+        
+        // Track retries
+        if (TaskStatus.FAILED_RETRYING.name().equals(task.getStatus())) {
+            totalRetries.incrementAndGet();
+            log.info("TASK_RETRY | taskId={} | orderId={} | attempt={}/{}", 
+                task.getId(), task.getOrderId(), task.getAttempts() + 1, task.getMaxAttempts());
+        }
+        
+        log.info("TASK_PICKUP | taskId={} | orderId={} | seq={} | qty={} | status={} | attempts={}", 
+            task.getId(), task.getOrderId(), task.getSequenceNumber(), 
+            task.getQuantity(), task.getStatus(), task.getAttempts());
+        
+        // === FAILURE INJECTION HOOK: Check pause ===
+        Mono<Void> pauseCheck = (failureInjectionService != null) 
+            ? failureInjectionService.checkPause() 
+            : Mono.empty();
+        
+        // Select proxy for this task
+        return pauseCheck.then(selectProxy(task))
+            .flatMap(proxySelection -> {
+                // === FAILURE INJECTION HOOK: Check proxy ban ===
+                if (failureInjectionService != null && 
+                    failureInjectionService.isProxyBanned(proxySelection.proxyId())) {
+                    log.warn("INJECTION_PROXY_BANNED | taskId={} | proxyId={}", 
+                        task.getId(), proxySelection.proxyId());
+                    return Mono.error(new RuntimeException("Injected: Proxy banned - " + proxySelection.proxyId()));
+                }
+                
+                // Claim task atomically
+                return claimTask(task, proxySelection)
+                    .flatMap(claimedTask -> 
+                        // Execute the delivery
+                        executeDelivery(claimedTask, proxySelection)
+                            // Complete task on success
+                            .flatMap(delivery -> completeTask(claimedTask, delivery))
+                            // Handle failure
+                            .onErrorResume(error -> handleTaskFailure(claimedTask, error))
+                    );
+            })
+            .switchIfEmpty(Mono.defer(() -> {
+                log.warn("TASK_NO_PROXY | taskId={} | orderId={}", task.getId(), task.getOrderId());
+                return handleTaskFailure(task, new RuntimeException("No proxy available"));
+            }))
+            .doFinally(signal -> activeTaskCount.decrementAndGet());
+    }
+    
+    /**
+     * Select a proxy for task execution.
+     */
+    private Mono<ProxySelection> selectProxy(OrderTaskEntity task) {
+        // Get order for geo targeting
+        return orderRepository.findById(task.getOrderId())
+            .flatMap(order -> {
+                RoutingRequest request = RoutingRequest.builder()
+                    .operation(OperationType.PLAY_DELIVERY)
+                    .targetCountry(order.getGeoProfile() != null ? order.getGeoProfile() : "WORLDWIDE")
+                    .quantity(task.getQuantity())
+                    .build();
+                
+                return proxyRouter.route(request);
+            });
+    }
+    
+    /**
+     * Claim task atomically (prevents other workers from taking it).
+     */
+    private Mono<OrderTaskEntity> claimTask(OrderTaskEntity task, ProxySelection proxy) {
+        return taskRepository.claimTask(
+            task.getId(),
+            Instant.now(),
+            workerId,
+            proxy.proxyId()
+        ).doOnSuccess(claimed -> {
+            if (claimed != null) {
+                log.debug("TASK_CLAIMED | taskId={} | workerId={} | proxyId={}", 
+                    task.getId(), workerId, proxy.proxyId());
+            }
+        });
+    }
+    
+    /**
+     * Execute the actual delivery (simulated for now).
+     * 
+     * In production, this would:
+     * 1. Connect to Spotify via proxy
+     * 2. Execute play commands
+     * 3. Verify delivery
+     * 4. Return success/failure
+     */
+    private Mono<DeliveryResult> executeDelivery(OrderTaskEntity task, ProxySelection proxy) {
+        log.info("TASK_EXECUTING | taskId={} | orderId={} | seq={} | qty={} | proxy={}", 
+            task.getId(), task.getOrderId(), task.getSequenceNumber(),
+            task.getQuantity(), proxy.proxyUrl());
+        
+        // === FAILURE INJECTION HOOKS ===
+        if (failureInjectionService != null && failureInjectionService.isEnabled()) {
+            FailureInjectionService.InjectionResult injection = 
+                failureInjectionService.checkInjections(proxy.proxyId(), task.getId());
+            
+            if (!injection.shouldProceed()) {
+                log.warn("INJECTION_TRIGGERED | taskId={} | type={} | reason={}", 
+                    task.getId(), injection.failureType(), injection.failureReason());
+                return Mono.error(new RuntimeException("Injected: " + injection.failureReason()));
+            }
+        }
+        
+        // Inject latency if configured
+        Mono<Void> latencyInjection = (failureInjectionService != null) 
+            ? failureInjectionService.injectLatency() 
+            : Mono.empty();
+        
+        // Simulate execution time
+        return latencyInjection
+            .then(Mono.delay(Duration.ofMillis(SIMULATED_EXECUTION_MS)))
+            .map(v -> {
+                // Legacy dev mode failure simulation (in case injection service not available)
+                if (isDevMode() && failureInjectionService == null && shouldSimulateFailure()) {
+                    throw new RuntimeException("Simulated proxy failure for testing");
+                }
+                
+                return new DeliveryResult(
+                    task.getId(),
+                    task.getQuantity(),
+                    true,
+                    proxy.proxyId(),
+                    Duration.ofMillis(SIMULATED_EXECUTION_MS)
+                );
+            });
+    }
+    
+    /**
+     * Complete task and update order progress.
+     */
+    private Mono<TaskExecutionResult> completeTask(OrderTaskEntity task, DeliveryResult delivery) {
+        log.info("TASK_COMPLETING | taskId={} | orderId={} | delivered={}", 
+            task.getId(), task.getOrderId(), delivery.deliveredPlays());
+        
+        return transactionalOperator.transactional(
+            // 1. Mark task completed
+            taskRepository.completeTask(task.getId(), Instant.now())
+                // 2. Update order delivered count
+                .flatMap(completedTask -> 
+                    incrementOrderDelivered(task.getOrderId(), delivery.deliveredPlays())
+                        .thenReturn(completedTask))
+                // 3. Check if order is fully delivered
+                .flatMap(completedTask -> 
+                    checkOrderCompletion(task.getOrderId())
+                        .thenReturn(completedTask))
+        )
+        .map(completedTask -> {
+            totalTasksCompleted.incrementAndGet();
+            
+            log.info("TASK_COMPLETED | taskId={} | orderId={} | seq={} | delivered={}", 
+                task.getId(), task.getOrderId(), task.getSequenceNumber(), delivery.deliveredPlays());
+            
+            // Report success to proxy router for metrics
+            proxyRouter.reportResult(delivery.proxyId(), ProxyResult.success(500, 0)).subscribe();
+            
+            return new TaskExecutionResult(task.getId(), true, delivery.deliveredPlays(), null);
+        });
+    }
+    
+    /**
+     * Handle task execution failure.
+     */
+    private Mono<TaskExecutionResult> handleTaskFailure(OrderTaskEntity task, Throwable error) {
+        String rawErrorMessage = error.getMessage() != null ? error.getMessage() : "Unknown error";
+        final String errorMessage = rawErrorMessage.substring(0, Math.min(rawErrorMessage.length(), 500));
+        
+        // Calculate retry delay (exponential backoff)
+        int attempts = task.getAttempts() + 1;
+        long backoffSeconds = 30L * (1L << Math.min(attempts - 1, 4)); // Cap at 8x
+        Instant retryAfter = Instant.now().plusSeconds(backoffSeconds);
+        
+        log.warn("TASK_FAILED | taskId={} | orderId={} | attempt={}/{} | error={} | retryAfter={}", 
+            task.getId(), task.getOrderId(), attempts, task.getMaxAttempts(), 
+            errorMessage, attempts >= task.getMaxAttempts() ? "PERMANENT" : retryAfter);
+        
+        return taskRepository.failTask(task.getId(), errorMessage, retryAfter)
+            .flatMap(failedTask -> {
+                totalTasksFailed.incrementAndGet();
+                
+                if (TaskStatus.FAILED_PERMANENT.name().equals(failedTask.getStatus())) {
+                    totalPermanentFailures.incrementAndGet();
+                    
+                    log.error("TASK_PERMANENT_FAILURE | taskId={} | orderId={} | qty={} | error={}", 
+                        task.getId(), task.getOrderId(), task.getQuantity(), errorMessage);
+                    
+                    // Update order's dead-letter count
+                    return incrementOrderFailedPermanent(task.getOrderId(), task.getQuantity())
+                        .thenReturn(failedTask);
+                } else {
+                    totalTransientFailures.incrementAndGet();
+                    return Mono.just(failedTask);
+                }
+            })
+            .map(failedTask -> new TaskExecutionResult(
+                task.getId(), 
+                false, 
+                0, 
+                errorMessage
+            ))
+            .doOnSuccess(result -> {
+                // Report failure to proxy router for metrics
+                if (task.getProxyNodeId() != null) {
+                    proxyRouter.reportResult(task.getProxyNodeId(), ProxyResult.failure(500, 500)).subscribe();
+                }
+            });
+    }
+    
+    // =========================================================================
+    // ORDER PROGRESS
+    // =========================================================================
+    
+    /**
+     * Increment order's delivered count atomically.
+     */
+    private Mono<OrderEntity> incrementOrderDelivered(UUID orderId, int deliveredPlays) {
+        return orderRepository.findById(orderId)
+            .flatMap(order -> {
+                int newDelivered = order.getDelivered() + deliveredPlays;
+                int newRemains = Math.max(0, order.getQuantity() - newDelivered);
+                
+                order.setDelivered(newDelivered);
+                order.setRemains(newRemains);
+                order.markNotNew();
+                
+                return orderRepository.save(order);
+            });
+    }
+    
+    /**
+     * Increment order's failed_permanent_plays count.
+     */
+    private Mono<Void> incrementOrderFailedPermanent(UUID orderId, int failedPlays) {
+        return orderRepository.findById(orderId)
+            .flatMap(order -> {
+                Integer current = order.getFailedPermanentPlays();
+                order.setFailedPermanentPlays((current != null ? current : 0) + failedPlays);
+                order.markNotNew();
+                return orderRepository.save(order);
+            })
+            .then();
+    }
+    
+    /**
+     * Check if order is fully delivered and mark complete.
+     */
+    private Mono<Void> checkOrderCompletion(UUID orderId) {
+        return taskRepository.getProgressSummary(orderId)
+            .flatMap(summary -> {
+                // Order is complete when no active tasks remain
+                if (summary.getActiveTasks() == 0) {
+                    return orderRepository.findById(orderId)
+                        .flatMap(order -> {
+                            int totalDelivered = summary.getDeliveredQuantity().intValue();
+                            int totalFailed = summary.getFailedPermanentQuantity().intValue();
+                            
+                            order.setStatus(OrderStatus.COMPLETED.name());
+                            order.setDelivered(totalDelivered);
+                            order.setRemains(0);
+                            order.setCompletedAt(Instant.now());
+                            order.markNotNew();
+                            
+                            // Calculate final status message
+                            String statusNote = String.format(
+                                "Delivered: %,d | Failed permanent: %,d | Tasks: %d completed, %d failed",
+                                totalDelivered, totalFailed, 
+                                summary.getCompletedTasks(), summary.getFailedPermanentTasks());
+                            order.setInternalNotes(statusNote);
+                            
+                            log.info("ORDER_COMPLETED | orderId={} | delivered={} | failedPermanent={} | " +
+                                     "completedTasks={} | failedTasks={}", 
+                                orderId, totalDelivered, totalFailed,
+                                summary.getCompletedTasks(), summary.getFailedPermanentTasks());
+                            
+                            return orderRepository.save(order);
+                        });
+                }
+                return Mono.empty();
+            })
+            .then();
+    }
+    
+    // =========================================================================
+    // HELPERS
+    // =========================================================================
+    
+    private String generateWorkerId() {
+        try {
+            String hostname = InetAddress.getLocalHost().getHostName();
+            return String.format("%s-%s", hostname, UUID.randomUUID().toString().substring(0, 8));
+        } catch (Exception e) {
+            return "worker-" + UUID.randomUUID().toString().substring(0, 8);
+        }
+    }
+    
+    private boolean isDevMode() {
+        return "local".equalsIgnoreCase(activeProfile) || 
+               "dev".equalsIgnoreCase(activeProfile);
+    }
+    
+    /**
+     * Simulate failures in dev mode for testing recovery.
+     * ~10% failure rate.
+     */
+    private boolean shouldSimulateFailure() {
+        return Math.random() < 0.10;
+    }
+    
+    // =========================================================================
+    // METRICS API
+    // =========================================================================
+    
+    public WorkerMetrics getMetrics() {
+        return new WorkerMetrics(
+            workerId,
+            totalTasksProcessed.get(),
+            totalTasksCompleted.get(),
+            totalTasksFailed.get(),
+            totalTransientFailures.get(),
+            totalPermanentFailures.get(),
+            totalRetries.get(),
+            recoveredOrphans.get(),
+            tasksRecoveredAfterStart.get(),
+            activeTaskCount.get(),
+            isRunning.get(),
+            workerStartTime
+        );
+    }
+    
+    /**
+     * Get failure injection status (for admin endpoint).
+     */
+    public FailureInjectionService.InjectionStatus getInjectionStatus() {
+        if (failureInjectionService != null) {
+            return failureInjectionService.getStatus();
+        }
+        return null;
+    }
+    
+    /**
+     * Get failure injection service (for admin controller).
+     */
+    public FailureInjectionService getFailureInjectionService() {
+        return failureInjectionService;
+    }
+    
+    // =========================================================================
+    // DATA RECORDS
+    // =========================================================================
+    
+    private record DeliveryResult(
+        UUID taskId,
+        int deliveredPlays,
+        boolean success,
+        UUID proxyId,
+        Duration executionTime
+    ) {}
+    
+    private record TaskExecutionResult(
+        UUID taskId,
+        boolean success,
+        int deliveredPlays,
+        String errorMessage
+    ) {}
+    
+    public record WorkerMetrics(
+        String workerId,
+        long totalProcessed,
+        long totalCompleted,
+        long totalFailed,
+        long transientFailures,
+        long permanentFailures,
+        long totalRetries,
+        long recoveredOrphans,
+        long tasksRecoveredAfterStart,
+        int activeCount,
+        boolean isRunning,
+        Instant workerStartTime
+    ) {}
+}

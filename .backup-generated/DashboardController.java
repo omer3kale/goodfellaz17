@@ -3,7 +3,7 @@ package com.goodfellaz17.presentation.api;
 import com.goodfellaz17.application.arbitrage.BotzzzUserProxyPool;
 import com.goodfellaz17.application.service.RoutingEngine;
 import com.goodfellaz17.domain.port.ProxyStrategy;
-import com.goodfellaz17.infrastructure.persistence.OrderRepository;
+import com.goodfellaz17.infrastructure.persistence.repository.OrderRepository;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;

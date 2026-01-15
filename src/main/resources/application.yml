@@ -15,13 +15,16 @@ spring:
       add-mappings: true
 
   # Database - Uses NEON_* vars (REQUIRED in production)
+  # For tests, @ServiceConnection from Testcontainers overrides these
   r2dbc:
-    url: r2dbc:postgresql://${NEON_HOST}:5432/${NEON_DB}?sslmode=require
-    username: ${NEON_USER}
-    password: ${NEON_PASSWORD}
+    url: r2dbc:postgresql://${NEON_HOST:localhost}:5432/${NEON_DB:goodfellaz17}
+    username: ${NEON_USER:goodfellaz17}
+    password: ${NEON_PASSWORD:localdev123}
     pool:
       initial-size: 5
       max-size: 20
+    properties:
+      sslMode: ${NEON_SSLMODE:DISABLE}
 
   # Async task execution
   task:

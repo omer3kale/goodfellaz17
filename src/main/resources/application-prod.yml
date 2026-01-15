@@ -53,6 +53,45 @@ goodfellaz17:
     prettyprinter:
       enabled: true              # API documentation
 
+  # ============================================
+  # 15K DELIVERY SYSTEM - PRODUCTION CONFIGURATION
+  # ============================================
+  # 
+  # CRITICAL: These settings enforce production safety!
+  # Time multiplier is 1 (REAL timing)
+  # Chaos injection is BLOCKED
+  #
+  delivery:
+    # NO time compression in production!
+    time-multiplier: 1
+    
+    # Task sizing
+    target-task-size: 400
+    min-task-size: 300
+    max-task-size: 500
+    
+    # Production thresholds
+    orphan-threshold-seconds: 120     # 2 minutes
+    retry-backoff-base-seconds: 30    # 30 second base
+    max-retry-attempts: 3
+    
+  worker:
+    # Production worker timing
+    interval-ms: 10000                # Every 10 seconds
+    batch-size: 50
+    worker-id-prefix: "prod-worker"
+    
+  chaos:
+    # CHAOS IS BLOCKED IN PRODUCTION
+    available: false
+
+  production-guards:
+    # CRITICAL GUARDS - ALL TRUE IN PRODUCTION
+    enforce-real-timing: true         # Blocks time compression
+    block-chaos-injection: true       # Blocks failure injection
+    require-ssl: true                 # Blocks non-HTTPS in prod
+    min-delivery-window-hours: 24     # Minimum 24h delivery window
+
 # ============================================
 # Bot Executor Configuration
 # ============================================

@@ -125,9 +125,9 @@ public class ProxyMonitoringController {
      * Get cost for a specific order.
      */
     @GetMapping("/cost/order/{orderId}")
-    public Mono<ResponseEntity<?>> getOrderCost(@PathVariable String orderId) {
+    public Mono<ResponseEntity<Object>> getOrderCost(@PathVariable String orderId) {
         return Mono.justOrEmpty(costTracker.getOrderCost(orderId))
-            .map(cost -> ResponseEntity.ok((Object) new OrderCostResponse(
+            .map(cost -> ResponseEntity.ok().<Object>body(new OrderCostResponse(
                 cost.getOrderId(),
                 cost.getTotalCostUsd(),
                 cost.getTotalRequests(),

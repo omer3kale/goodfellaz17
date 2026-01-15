@@ -1,0 +1,27 @@
+# Local Development Stack for GoodfellaZ17
+# Usage: docker compose -f docker-compose.local.yml up -d
+
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: goodfellaz17-postgres
+    environment:
+      POSTGRES_DB: goodfellaz17
+      POSTGRES_USER: goodfellaz17
+      POSTGRES_PASSWORD: localdev123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Auto-run migrations on startup
+      - ./src/main/resources/db/migration:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U goodfellaz17"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

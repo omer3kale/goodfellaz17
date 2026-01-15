@@ -1,0 +1,21 @@
+# Test configuration for Testcontainers
+# Note: R2DBC connection is auto-configured by @ServiceConnection from Testcontainers
+
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  flyway:
+    enabled: false  # Schema loaded via initScript
+  # Note: Do NOT specify r2dbc.url here - @ServiceConnection handles it
+
+# Disable proxy system for tests
+proxy:
+  hybrid:
+    enabled: false
+
+# Reduce logging noise in tests
+logging:
+  level:
+    root: WARN
+    com.goodfellaz17: DEBUG
+    org.testcontainers: INFO

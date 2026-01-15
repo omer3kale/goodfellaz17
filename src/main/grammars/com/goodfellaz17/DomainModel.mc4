@@ -1,0 +1,274 @@
+/* 
+ * MontiCore Grammar: DomainModel.mc4
+ * 
+ * Canonical domain model for the goodfellaz17 ecosystem:
+ *   - goodfellaz17 (core delivery engine)
+ *   - botzzz773 (SMM panel frontend)
+ *   - market competitor site (black+neon green)
+ * 
+ * RWTH Aachen MATSE Thesis: Distributed Proxy Orchestration
+ * 
+ * This grammar serves as the single source of truth for:
+ *   - JPA Entities (generated)
+ *   - DTOs (generated)
+ *   - PostgreSQL DDL (generated)
+ *   - Spring Data Repositories (generated)
+ *   - API Contracts (OpenAPI compatible)
+ * 
+ * Author: goodfellaz17 Team
+ * Version: 1.0.0
+ * Last Modified: 2026-01-12
+ */
+
+grammar DomainModel extends de.monticore.literals.MCCommonLiterals {
+
+  // ============================================================
+  // ROOT COMPILATION UNIT
+  // ============================================================
+  
+  DomainModelRoot = 
+    "domain" Name "{" 
+      DomainElement*
+    "}";
+  
+  interface DomainElement;
+  
+  // ============================================================
+  // ENUMERATIONS
+  // ============================================================
+  
+  EnumDeclaration implements DomainElement =
+    "enum" Name "{"
+      (EnumConstant || ",")* 
+    "}";
+  
+  EnumConstant = Name ("=" StringLiteral)?;
+  
+  // ============================================================
+  // ENTITY DEFINITIONS
+  // ============================================================
+  
+  EntityDeclaration implements DomainElement =
+    Annotation*
+    "entity" Name ("extends" extends:Name)? "{"
+      FieldDeclaration*
+      RelationDeclaration*
+      IndexDeclaration*
+    "}";
+  
+  // ============================================================
+  // FIELD DEFINITIONS
+  // ============================================================
+  
+  FieldDeclaration =
+    Annotation*
+    fieldName:Name ":" FieldType 
+    ("=" defaultValue:Expression)?
+    Constraint*
+    ";";
+  
+  FieldType = 
+      PrimitiveType
+    | ReferenceType
+    | CollectionType
+    | OptionalType;
+  
+  PrimitiveType = 
+    typeName:["UUID" | "String" | "Int" | "Long" | "Double" | "Boolean" | 
+              "BigDecimal" | "LocalDateTime" | "Instant" | "Duration"];
+  
+  ReferenceType = 
+    "@ref" entityName:Name;
+  
+  CollectionType = 
+    collectionKind:["List" | "Set" | "Map"] "<" elementType:FieldType 
+    ("," valueType:FieldType)? ">";
+  
+  OptionalType = 
+    "Optional" "<" innerType:FieldType ">";
+  
+  // ============================================================
+  // CONSTRAINTS
+  // ============================================================
+  
+  interface Constraint;
+  
+  NotNullConstraint implements Constraint = 
+    "@NotNull";
+  
+  NullableConstraint implements Constraint = 
+    "@Nullable";
+  
+  UniqueConstraint implements Constraint = 
+    "@Unique";
+  
+  IndexedConstraint implements Constraint = 
+    "@Indexed";
+  
+  RangeConstraint implements Constraint = 
+    "@Range" "(" "min" "=" min:Expression "," "max" "=" max:Expression ")";
+  
+  LengthConstraint implements Constraint = 
+    "@Length" "(" "max" "=" max:NatLiteral ")";
+  
+  PatternConstraint implements Constraint = 
+    "@Pattern" "(" pattern:StringLiteral ")";
+  
+  EnumTypeConstraint implements Constraint = 
+    "@EnumType" "(" enumName:Name ")";
+  
+  DefaultValueConstraint implements Constraint = 
+    "@Default" "(" value:Expression ")";
+  
+  // ============================================================
+  // RELATIONS
+  // ============================================================
+  
+  RelationDeclaration = 
+    relationKind:["@OneToMany" | "@ManyToOne" | "@OneToOne" | "@ManyToMany"]
+    "(" "target" "=" target:Name 
+        ("," "mappedBy" "=" mappedBy:Name)?
+        ("," "cascade" "=" cascade:["ALL" | "PERSIST" | "MERGE" | "REMOVE"])?
+        ("," "fetch" "=" fetch:["LAZY" | "EAGER"])?
+    ")"
+    fieldName:Name ";";
+  
+  // ============================================================
+  // INDEX DEFINITIONS
+  // ============================================================
+  
+  IndexDeclaration =
+    "@Index" "(" 
+      "name" "=" indexName:StringLiteral ","
+      "columns" "=" "[" (columnName:Name || ",")+ "]"
+      ("," "unique" "=" unique:BooleanLiteral)?
+    ")";
+  
+  // ============================================================
+  // ANNOTATIONS (for code generation hints)
+  // ============================================================
+  
+  Annotation =
+      TableAnnotation
+    | AuditAnnotation
+    | VersionAnnotation
+    | GeneratedAnnotation
+    | ApiAnnotation;
+  
+  TableAnnotation = 
+    "@Table" "(" "name" "=" tableName:StringLiteral ")";
+  
+  AuditAnnotation = 
+    "@Audited";
+  
+  VersionAnnotation = 
+    "@Version";
+  
+  GeneratedAnnotation = 
+    "@Generated" "(" strategy:["UUID" | "SEQUENCE" | "IDENTITY"] ")";
+  
+  ApiAnnotation = 
+    "@Api" "(" 
+      ("description" "=" description:StringLiteral)?
+      ("," "tags" "=" "[" (tag:StringLiteral || ",")* "]")?
+    ")";
+  
+  // ============================================================
+  // VALUE OBJECTS
+  // ============================================================
+  
+  ValueObjectDeclaration implements DomainElement =
+    "@ValueObject"
+    "value" Name "{"
+      FieldDeclaration*
+    "}";
+  
+  // ============================================================
+  // AGGREGATE ROOTS
+  // ============================================================
+  
+  AggregateDeclaration implements DomainElement =
+    "@AggregateRoot"
+    "aggregate" Name "{"
+      "root" ":" rootEntity:Name ";"
+      ("entities" ":" "[" (entityName:Name || ",")* "]" ";")?
+      ("invariants" "{" InvariantDeclaration* "}")?
+    "}";
+  
+  InvariantDeclaration = 
+    "invariant" Name ":" expression:StringLiteral ";";
+  
+  // ============================================================
+  // DTO DEFINITIONS (for API contracts)
+  // ============================================================
+  
+  DtoDeclaration implements DomainElement =
+    "@Dto" ("(" "entity" "=" entity:Name ")")?
+    "dto" Name "{"
+      FieldDeclaration*
+    "}";
+  
+  // ============================================================
+  // REPOSITORY DEFINITIONS
+  // ============================================================
+  
+  RepositoryDeclaration implements DomainElement =
+    "repository" Name "for" entityName:Name "{"
+      QueryMethodDeclaration*
+    "}";
+  
+  QueryMethodDeclaration =
+    returnType:FieldType methodName:Name 
+    "(" (Parameter || ",")* ")" ";";
+  
+  Parameter = 
+    paramName:Name ":" paramType:FieldType;
+  
+  // ============================================================
+  // SERVICE DEFINITIONS
+  // ============================================================
+  
+  ServiceDeclaration implements DomainElement =
+    "service" Name "{"
+      ServiceMethodDeclaration*
+    "}";
+  
+  ServiceMethodDeclaration =
+    Annotation*
+    returnType:FieldType methodName:Name 
+    "(" (Parameter || ",")* ")" 
+    ("throws" (exception:Name || ",")+)?
+    ";";
+  
+  // ============================================================
+  // EXPRESSIONS (for default values, constraints)
+  // ============================================================
+  
+  interface Expression;
+  
+  LiteralExpression implements Expression =
+      NatLiteral
+    | SignedNatLiteral
+    | BasicDoubleLiteral
+    | StringLiteral
+    | BooleanLiteral
+    | NullLiteral;
+  
+  NullLiteral = "null";
+  
+  EnumLiteralExpression implements Expression =
+    enumType:Name "." enumValue:Name;
+  
+  MethodCallExpression implements Expression =
+    (receiver:Name ".")? methodName:Name "(" (Expression || ",")* ")";
+  
+  FieldAccessExpression implements Expression =
+    receiver:Name "." fieldName:Name;
+  
+  // ============================================================
+  // BOOLEAN LITERAL (needed for constraints)
+  // ============================================================
+  
+  BooleanLiteral = value:["true" | "false"];
+
+}

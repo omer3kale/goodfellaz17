@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    MontiCore Build Configuration for goodfellaz17
+    
+    This configuration integrates MontiCore DSL compilation into the Maven build.
+    
+    Features:
+    - Compiles DomainModel.mc4 grammar
+    - Generates Java classes from grammar
+    - Processes Goodfellaz17.dm domain model instance
+    - Generates JPA entities, DTOs, repositories, and DDL
+    
+    Add to main pom.xml <build><plugins> section.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    
+    <!-- 
+        Required MontiCore Dependencies 
+        Add to <dependencies> section of main pom.xml
+    -->
+    <dependencies>
+        <!-- MontiCore Runtime -->
+        <dependency>
+            <groupId>de.monticore</groupId>
+            <artifactId>monticore-runtime</artifactId>
+            <version>7.6.0</version>
+        </dependency>
+        
+        <!-- MontiCore Grammar Library -->
+        <dependency>
+            <groupId>de.monticore</groupId>
+            <artifactId>monticore-grammar</artifactId>
+            <version>7.6.0</version>
+        </dependency>
+        
+        <!-- SE Commons (required by MontiCore) -->
+        <dependency>
+            <groupId>de.se_rwth.commons</groupId>
+            <artifactId>se-commons-logging</artifactId>
+            <version>0.14.0</version>
+        </dependency>
+    </dependencies>
+    
+    <build>
+        <plugins>
+            <!-- 
+                MontiCore Generator Plugin
+                Compiles .mc4 grammars and generates parser/AST classes
+            -->
+            <plugin>
+                <groupId>de.monticore.mojo</groupId>
+                <artifactId>monticore-maven-plugin</artifactId>
+                <version>7.6.0</version>
+                <executions>
+                    <execution>
+                        <id>generate-domain-model</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <!-- Grammar files location -->
+                            <grammars>
+                                <grammar>${project.basedir}/src/main/grammars</grammar>
+                            </grammars>
+                            
+                            <!-- Output for generated parser/AST -->
+                            <outputDirectory>
+                                ${project.build.directory}/generated-sources/monticore
+                            </outputDirectory>
+                            
+                            <!-- Model path for grammar inheritance -->
+                            <modelPaths>
+                                <modelPath>${project.basedir}/src/main/grammars</modelPath>
+                            </modelPaths>
+                            
+                            <!-- Handcoded path for TOP mechanism -->
+                            <handcodedPaths>
+                                <handcodedPath>${project.basedir}/src/main/java</handcodedPath>
+                            </handcodedPaths>
+                            
+                            <!-- Template path for code generation -->
+                            <templatePaths>
+                                <templatePath>${project.basedir}/src/main/resources/templates</templatePath>
+                            </templatePaths>
+                            
+                            <!-- Skip if grammar unchanged -->
+                            <skip>false</skip>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            
+            <!-- 
+                Build Helper Plugin
+                Adds generated sources to compile path
+            -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.4.0</version>
+                <executions>
+                    <execution>
+                        <id>add-monticore-sources</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${project.build.directory}/generated-sources/monticore</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+    
+    <!-- 
+        MontiCore Repository 
+        Add to <repositories> section
+    -->
+    <repositories>
+        <repository>
+            <id>se-nexus</id>
+            <url>https://nexus.se.rwth-aachen.de/content/groups/public/</url>
+        </repository>
+    </repositories>
+    
+    <pluginRepositories>
+        <pluginRepository>
+            <id>se-nexus-plugins</id>
+            <url>https://nexus.se.rwth-aachen.de/content/groups/public/</url>
+        </pluginRepository>
+    </pluginRepositories>
+    
+</project>
