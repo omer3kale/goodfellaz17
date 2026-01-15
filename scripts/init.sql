@@ -3,6 +3,30 @@
 -- PostgreSQL/Neon compatible schema
 -- Exact field match for customer dashboard + admin panel
 
+-- ==================== USERS (Platform users) ====================
+CREATE TABLE IF NOT EXISTS users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    tier VARCHAR(20) DEFAULT 'CONSUMER',       -- CONSUMER, RESELLER, AGENCY
+    balance DECIMAL(10,2) DEFAULT 0.00,
+    api_key VARCHAR(64) UNIQUE,
+    webhook_url VARCHAR(512),
+    discord_webhook VARCHAR(512),
+    company_name VARCHAR(255),
+    referral_code VARCHAR(32),
+    referred_by UUID,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    last_login TIMESTAMP WITH TIME ZONE,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    status VARCHAR(30) DEFAULT 'ACTIVE',       -- ACTIVE, SUSPENDED, PENDING_VERIFICATION
+    email_verified BOOLEAN DEFAULT FALSE,
+    two_factor_enabled BOOLEAN DEFAULT FALSE
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_api_key ON users(api_key);
+
 -- ==================== API KEYS (Customer wallets) ====================
 CREATE TABLE IF NOT EXISTS api_keys (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -73,6 +97,34 @@ CREATE TABLE IF NOT EXISTS bot_tasks (
     completed_at TIMESTAMP WITH TIME ZONE
 );
 
+-- ==================== ORDER TASKS (15k engine task units) ====================
+CREATE TABLE IF NOT EXISTS order_tasks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    order_id UUID NOT NULL,
+    sequence_number INTEGER NOT NULL,
+    quantity INTEGER NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+    attempts INTEGER DEFAULT 0,
+    max_attempts INTEGER DEFAULT 3,
+    last_error TEXT,
+    proxy_node_id UUID,
+    execution_started_at TIMESTAMP WITH TIME ZONE,
+    executed_at TIMESTAMP WITH TIME ZONE,
+    scheduled_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    retry_after TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    idempotency_token VARCHAR(128) NOT NULL,
+    worker_id VARCHAR(64),
+    
+    CONSTRAINT uk_order_task_idempotency UNIQUE (idempotency_token),
+    CONSTRAINT uk_order_sequence UNIQUE (order_id, sequence_number)
+);
+
+CREATE INDEX IF NOT EXISTS idx_order_tasks_order_id ON order_tasks(order_id);
+CREATE INDEX IF NOT EXISTS idx_order_tasks_status ON order_tasks(status);
+CREATE INDEX IF NOT EXISTS idx_order_tasks_scheduled ON order_tasks(scheduled_at);
+CREATE INDEX IF NOT EXISTS idx_order_tasks_worker ON order_tasks(worker_id);
+
 -- ==================== BOT ACCOUNTS ====================
 CREATE TABLE IF NOT EXISTS bot_accounts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -85,6 +137,24 @@ CREATE TABLE IF NOT EXISTS bot_accounts (
     is_compromised BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- ==================== PREMIUM ACCOUNTS (OAuth farm) ====================
+CREATE TABLE IF NOT EXISTS premium_accounts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255),
+    cookies TEXT,
+    premium_expiry DATE NOT NULL,
+    region VARCHAR(50) DEFAULT 'WORLDWIDE',
+    spotify_refresh_token TEXT,
+    spotify_access_token TEXT,
+    plays_today INTEGER DEFAULT 0,
+    last_play_date DATE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_premium_accounts_expiry ON premium_accounts(premium_expiry);
+CREATE INDEX IF NOT EXISTS idx_premium_accounts_region ON premium_accounts(region);
 
 -- ==================== PROXY POOL ====================
 CREATE TABLE IF NOT EXISTS proxy_pool (

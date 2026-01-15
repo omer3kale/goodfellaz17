@@ -7,6 +7,7 @@ import com.goodfellaz17.infrastructure.persistence.generated.GeneratedOrderRepos
 import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -30,9 +31,13 @@ import java.util.UUID;
  *   GET /api/admin/orders/{id}/tasks    - Task breakdown (stub for now)
  *   GET /api/admin/orders/queue         - View order queue summary
  *   GET /api/admin/orders/recent        - Recent orders list
+ * 
+ * DEPRECATED: Use AdminOrderProgressController instead.
+ * This controller is disabled to avoid endpoint conflicts.
  */
 @RestController
 @RequestMapping("/api/admin/orders")
+@Profile("legacy-order-admin") // Disabled - use AdminOrderProgressController instead
 public class OrderAdminController {
     
     private static final Logger log = LoggerFactory.getLogger(OrderAdminController.class);

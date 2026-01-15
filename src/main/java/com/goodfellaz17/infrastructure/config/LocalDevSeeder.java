@@ -31,9 +31,12 @@ import java.util.UUID;
  * Usage from IDE:
  *   Run Configuration → VM options: -Dspring.profiles.active=local
  *   Or set environment variable: SPRING_PROFILES_ACTIVE=local
+ * 
+ * DISABLED: Schema mismatch between generated entities and init.sql.
+ * Re-enable after schema alignment post-freeze.
  */
 @Configuration
-@Profile("local")
+@Profile("local-seed") // Disabled for freeze tests - schema mismatch with init.sql
 public class LocalDevSeeder {
     
     private static final Logger log = LoggerFactory.getLogger(LocalDevSeeder.class);

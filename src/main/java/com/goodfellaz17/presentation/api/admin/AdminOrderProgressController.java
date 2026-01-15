@@ -177,11 +177,12 @@ public class AdminOrderProgressController {
     // =========================================================================
     
     /**
-     * GET /api/admin/capacity
+     * GET /api/admin/capacity-status
      * 
      * Get current system capacity and can-accept status.
+     * Note: /api/admin/capacity is handled by CapacityAdminController for detailed capacity management.
      */
-    @GetMapping("/capacity")
+    @GetMapping("/capacity-status")
     public Mono<ResponseEntity<CapacityStatusResponse>> getCapacityStatus() {
         return capacityService.calculateCurrentCapacity()
             .flatMap(snapshot -> 
