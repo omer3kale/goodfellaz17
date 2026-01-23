@@ -44,9 +44,23 @@ NODE_ID = str(uuid4())[:8]
 LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "requests.log")
 
 class ProxyHandler(http.server.BaseHTTPRequestHandler):
-    def log_request(self, code='-', size='-'):
+    def log_message(self, format, *args):
+        # Suppress default logging to stderr
+        pass
+    
+    def log_task(self, task_data, status_code, result):
+        """Log task execution details to requests.log"""
         with open(LOG_FILE, 'a') as f:
-            f.write(f"{datetime.now().isoformat()} {self.command} {self.path} {code}\n")
+            entry = {
+                "timestamp": datetime.now().isoformat(),
+                "nodeId": NODE_ID,
+                "method": self.command,
+                "path": self.path,
+                "status": status_code,
+                "task": task_data,
+                "result": result
+            }
+            f.write(json.dumps(entry) + "\n")
     
     def do_GET(self):
         if self.path == '/health':
@@ -64,16 +78,30 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length)
             
-            # Log the task
-            self.log_request(200)
+            # Parse the task
+            try:
+                task = json.loads(body.decode()) if body else {}
+            except json.JSONDecodeError:
+                task = {"raw": body.decode()}
             
             # TODO: Actually execute the Spotify request
-            # For now, simulate success
+            # For now, simulate success with task echo
+            result = {
+                "success": True,
+                "nodeId": NODE_ID,
+                "taskId": task.get("taskId", "unknown"),
+                "plays": task.get("plays", 0),
+                "message": "Task executed (stub)"
+            }
+            
+            # Log the task with full details
+            self.log_task(task, 200, result)
+            print(f"[ProxyNode {NODE_ID}] EXECUTE: taskId={task.get('taskId')} plays={task.get('plays')} → SUCCESS")
+            
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
-            response = {"success": True, "nodeId": NODE_ID, "message": "Task executed (stub)"}
-            self.wfile.write(json.dumps(response).encode())
+            self.wfile.write(json.dumps(result).encode())
         else:
             self.send_response(404)
             self.end_headers()
