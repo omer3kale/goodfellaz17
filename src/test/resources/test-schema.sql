@@ -167,10 +167,15 @@ CREATE TABLE proxy_nodes (
     registered_at           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_healthcheck        TIMESTAMP WITH TIME ZONE,
     status                  VARCHAR(50) NOT NULL DEFAULT 'ONLINE',
+    health_state            VARCHAR(20) NOT NULL DEFAULT 'HEALTHY',
     tags                    JSONB,
     
-    CONSTRAINT proxy_nodes_ip_unique UNIQUE (public_ip)
+    CONSTRAINT proxy_nodes_ip_unique UNIQUE (public_ip),
+    CONSTRAINT proxy_nodes_health_state_check CHECK (health_state IN ('HEALTHY', 'DEGRADED', 'OFFLINE'))
 );
+
+CREATE INDEX idx_proxy_nodes_health_selection ON proxy_nodes(tier, status, health_state, current_load) 
+    WHERE status = 'ONLINE' AND health_state != 'OFFLINE';
 
 -- =============================================================================
 -- PROXY METRICS TABLE (minimal for tests)
@@ -253,3 +258,45 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS estimated_completion_at TIMESTAMP WI
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS failed_permanent_plays INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS uses_task_delivery BOOLEAN NOT NULL DEFAULT FALSE;
 
+-- =============================================================================
+-- V9: REFUND HARDENING (Constraints + Audit Tables)
+-- =============================================================================
+
+-- Refund events audit table (append-only)
+CREATE TABLE IF NOT EXISTS refund_events (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    order_id        UUID NOT NULL REFERENCES orders(id) ON DELETE RESTRICT,
+    task_id         UUID NOT NULL REFERENCES order_tasks(id) ON DELETE RESTRICT,
+    user_id         UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    quantity        INTEGER NOT NULL,
+    amount          NUMERIC(12,4) NOT NULL,
+    price_per_unit  NUMERIC(12,8) NOT NULL,
+    worker_id       VARCHAR(64),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    
+    CONSTRAINT uq_refund_event_task UNIQUE (task_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_refund_events_order ON refund_events (order_id);
+CREATE INDEX IF NOT EXISTS idx_refund_events_user ON refund_events (user_id);
+
+-- Refund anomalies table (for reconciliation)
+CREATE TABLE IF NOT EXISTS refund_anomalies (
+    id                      UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    order_id                UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    detected_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    anomaly_type            VARCHAR(50) NOT NULL,
+    expected_refund_amount  NUMERIC(12,4),
+    actual_refund_amount    NUMERIC(12,4),
+    expected_failed_plays   INTEGER,
+    actual_failed_plays     INTEGER,
+    refunded_task_count     INTEGER,
+    severity                VARCHAR(20) NOT NULL DEFAULT 'WARNING',
+    resolved_at             TIMESTAMPTZ,
+    resolution_notes        TEXT
+);
+
+-- Partial index for refund processing
+CREATE INDEX IF NOT EXISTS idx_tasks_refund_pending 
+    ON order_tasks (order_id, status, refunded)
+    WHERE status = 'FAILED_PERMANENT' AND refunded = FALSE;

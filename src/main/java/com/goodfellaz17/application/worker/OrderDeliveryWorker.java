@@ -409,9 +409,11 @@ public class OrderDeliveryWorker {
                     log.error("TASK_PERMANENT_FAILURE | taskId={} | orderId={} | qty={} | error={}", 
                         task.getId(), task.getOrderId(), task.getQuantity(), errorMessage);
                     
-                    // Update order's dead-letter count and process refund if enabled
+                    // Update order's dead-letter count, process refund, and check completion
                     return incrementOrderFailedPermanentAndRefund(
                             task.getId(), task.getOrderId(), task.getQuantity())
+                        .then(orderRepository.findById(task.getOrderId()))
+                        .flatMap(order -> checkOrderCompletion(order))
                         .thenReturn(failedTask);
                 } else {
                     totalTransientFailures.incrementAndGet();
@@ -511,7 +513,10 @@ public class OrderDeliveryWorker {
      */
     private Mono<Void> checkOrderCompletion(OrderEntity order) {
         // Order is complete when no remains left (all plays delivered or failed)
-        if (order.getRemains() <= 0) {
+        log.debug("CHECK_ORDER_COMPLETION | orderId={} | remains={} | delivered={} | failed={}", 
+            order.getId(), order.getRemains(), order.getDelivered(), order.getFailedPermanentPlays());
+        
+        if (order.getRemains() != null && order.getRemains() <= 0) {
             int totalDelivered = order.getDelivered();
             int totalFailed = order.getFailedPermanentPlays() != null 
                 ? order.getFailedPermanentPlays() : 0;

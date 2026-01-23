@@ -1,0 +1,113 @@
+version: '3.9'
+
+# =============================================================================
+# GOODFELLAZ17 - Self-Hosted PostgreSQL Platform
+# =============================================================================
+# 
+# Architecture:
+#   Application → PgBouncer (6432) → PostgreSQL (5432)
+#
+# Why PgBouncer?
+#   - Connection pooling: 10 workers × 5 conn = 50 app connections
+#   - PgBouncer multiplexes to 25 Postgres connections
+#   - Transaction pooling: connections returned after each transaction
+#   - Prevents "too many connections" under load
+#
+# Transaction vs Session Pooling Trade-offs:
+#   TRANSACTION (chosen): Connection released after each transaction
+#     ✓ Best connection utilization
+#     ✓ Handles 100+ clients with 25 DB connections
+#     ✗ Cannot use session-level features (LISTEN/NOTIFY, prepared statements across transactions)
+#   
+#   SESSION: Connection held for entire session
+#     ✓ Full Postgres feature support
+#     ✗ Poor connection utilization (1:1 mapping)
+#     ✗ Max clients = max DB connections
+#
+# For R2DBC + transaction-per-request pattern, TRANSACTION mode is optimal.
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 16.9 - Primary Database
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16.9-alpine
+    container_name: goodfellaz17-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: spotifybot_admin
+      POSTGRES_PASSWORD: Mariogomez33Strong
+      POSTGRES_DB: spotifybot
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    ports:
+      - "5432:5432"  # Direct access for migrations/admin only
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data:rw
+      - ./pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    networks:
+      - db-internal
+
+  # ---------------------------------------------------------------------------
+  # PgBouncer - Connection Pooler
+  # ---------------------------------------------------------------------------
+  # Application connects here (port 6432), NOT directly to Postgres
+  # ---------------------------------------------------------------------------
+  pgbouncer:
+    image: edoburu/pgbouncer:1.21.0-p2
+    container_name: goodfellaz17-pgbouncer
+    restart: unless-stopped
+    environment:
+      # Database connection (upstream to Postgres)
+      DATABASE_URL: postgres://spotifybot_admin:Mariogomez33Strong@postgres:5432/spotifybot
+      # Pool settings
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 1000        # Max client connections to PgBouncer
+      DEFAULT_POOL_SIZE: 25        # Connections per user/database pair
+      MIN_POOL_SIZE: 5             # Minimum connections kept open
+      RESERVE_POOL_SIZE: 5         # Extra connections for burst
+      RESERVE_POOL_TIMEOUT: 3      # Seconds before using reserve pool
+      # Security - Use plain text auth with userlist for local dev
+      # PgBouncer handles client auth, then connects to Postgres with its own creds
+      AUTH_TYPE: plain
+      AUTH_FILE: /etc/pgbouncer/userlist.txt
+      # Logging
+      LOG_CONNECTIONS: 1
+      LOG_DISCONNECTIONS: 1
+      LOG_POOLER_ERRORS: 1
+      # Timeouts
+      SERVER_IDLE_TIMEOUT: 600     # Close idle server connections after 10min
+      CLIENT_IDLE_TIMEOUT: 0       # Never close idle client connections
+      QUERY_TIMEOUT: 0             # No query timeout (app handles this)
+      # Stats
+      STATS_PERIOD: 60             # Log stats every 60s
+    ports:
+      - "6432:5432"  # Application connects here
+    volumes:
+      - ./pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 5432 -U spotifybot_app || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - db-internal
+      - app-network
+
+networks:
+  # Internal network: Postgres <-> PgBouncer
+  # NOTE: internal: false to allow host port binding for admin/migration access
+  db-internal:
+    driver: bridge
+    internal: false
+  # External network: Application <-> PgBouncer
+  app-network:
+    driver: bridge

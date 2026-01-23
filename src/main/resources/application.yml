@@ -68,6 +68,18 @@ proxy:
     enabled: true
     interval-seconds: 60
   
+  # Phase 1: Proxy Machine Configuration (two-machine architecture)
+  machine:
+    url: ${PROXY_MACHINE_URL:http://localhost:8081}
+    enabled: ${PROXY_MACHINE_ENABLED:false}
+    timeout-seconds: 30
+  
+  # Health State Thresholds (from architecture spec)
+  selection:
+    healthy-threshold: 0.85    # successRate >= 0.85 = HEALTHY
+    degraded-threshold: 0.70   # successRate >= 0.70 = DEGRADED
+    # successRate < 0.70 = OFFLINE (never selected)
+  
   # TOR Network (FREE - Multi-port rotation)
   tor:
     enabled: ${TOR_ENABLED:true}

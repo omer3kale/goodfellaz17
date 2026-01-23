@@ -1,0 +1,122 @@
+# =============================================================================
+# GOODFELLAZ17 - Local Self-Hosted Profile
+# =============================================================================
+# 
+# For running against YOUR OWN Postgres (docker or otherwise).
+# 
+# Prerequisites:
+#   1. Run: docker compose -f infra/docker-compose.db.yml up -d
+#   2. Initialize schema: Run migrations V1-V14 using spotifybot_admin
+#   3. Set app user password: ./infra/setup-app-user.sh 'YourPassword'
+#   4. Update password below (or set SPOTIFYBOT_APP_PASSWORD env var)
+#
+# Run command:
+#   export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+#   SPRING_PROFILES_ACTIVE=local-selfhosted mvn spring-boot:run
+#
+# SECURITY NOTE:
+#   spotifybot_app is a non-privileged user for application runtime.
+#   spotifybot_admin is reserved for migrations, backups, and maintenance only.
+#   See: infra/SECURITY_ROLES.md
+#
+# MULTI-TENANCY:
+#   Set goodfellaz17.multitenancy.enabled=true to enable tenant routing.
+#   See: infra/MULTI_TENANT_GUIDE.md
+# =============================================================================
+
+spring:
+  main:
+    allow-bean-definition-overriding: true
+    
+  # Database - Via PgBouncer (port 6432) for connection pooling
+  # Direct Postgres (5432) is for migrations/admin only
+  r2dbc:
+    url: r2dbc:postgresql://localhost:6432/spotifybot
+    username: spotifybot_app
+    password: ${SPOTIFYBOT_APP_PASSWORD:SpotifyApp2026Secure}
+    pool:
+      enabled: false  # PgBouncer handles pooling, disable R2DBC pool
+      initial-size: 5
+      max-size: 15
+
+logging:
+  level:
+    root: INFO
+    com.goodfellaz17: DEBUG
+    com.goodfellaz17.infrastructure.persistence: DEBUG
+    org.springframework.r2dbc: INFO
+    io.r2dbc.postgresql: INFO
+
+bot:
+  executor:
+    max-concurrent: 10
+
+# =============================================================================
+# GOODFELLAZ17 PLATFORM CONFIGURATION
+# =============================================================================
+
+goodfellaz17:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Database Health Probe
+  # ─────────────────────────────────────────────────────────────────────────────
+  db:
+    health:
+      latency-warning-threshold-ms: 500
+      max-consecutive-failures: 3
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Multi-Tenancy Configuration
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Enable to support multiple SMM panels (botzzz773, etc.)
+  # When disabled, all requests go to the default tenant database.
+  # ─────────────────────────────────────────────────────────────────────────────
+  multitenancy:
+    enabled: false                    # Set to true for multi-tenant mode
+    default-tenant: goodfellaz17      # Fallback tenant if not specified
+    
+    # PgBouncer connection settings
+    pgbouncer:
+      host: localhost
+      port: 6432                      # PgBouncer port (not Postgres 5432)
+    
+    # Tenant resolution
+    resolution:
+      header-name: X-Tenant-ID        # HTTP header for tenant identification
+      api-key-enabled: true           # Allow tenant resolution via API key
+      strict-mode: true               # Fail if tenant cannot be resolved
+    
+    # Connection pool per tenant
+    pool:
+      default-size: 10                # Connections per tenant
+      max-total: 100                  # Total connections across all tenants
+      idle-timeout-minutes: 10        # Close idle connections after 10min
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Audit Trail Configuration
+  # ─────────────────────────────────────────────────────────────────────────────
+  audit:
+    enabled: true
+    log-to-console: true              # Also log audit events to console
+    include-request-path: true        # Capture API endpoint in audit trail
+    include-ip-address: true          # Capture client IP
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Data Retention Configuration
+  # ─────────────────────────────────────────────────────────────────────────────
+  retention:
+    enabled: true
+    dry-run: false                    # Set to true to preview without deleting
+    schedule: "0 4 * * *"             # Cron: 4 AM daily
+    policies:
+      refund-events-days: 90
+      balance-transactions-days: 365
+      proxy-metrics-days: 30
+      audit-events-days: 730          # 2 years
+
+proxy:
+  brightdata:
+    enabled: false
+  soax:
+    enabled: false
+  tor:
+    enabled: false

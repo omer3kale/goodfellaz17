@@ -1,0 +1,3 @@
+"spotifybot_admin" "Mariogomez33Strong"
+"spotifybot_app" "SpotifyApp2026Secure"
+

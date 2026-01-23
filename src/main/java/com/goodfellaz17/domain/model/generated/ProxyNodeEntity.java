@@ -126,6 +126,18 @@ public class ProxyNodeEntity implements Serializable, Persistable<UUID> {
     @Column("status")
     private String status = ProxyStatus.ONLINE.name();
     
+    /**
+     * Health state for selection algorithm: HEALTHY, DEGRADED, OFFLINE
+     * - HEALTHY: successRate >= 0.85, preferred for task assignment
+     * - DEGRADED: successRate >= 0.70 && < 0.85, fallback only (logged)
+     * - OFFLINE: successRate < 0.70 or operational issues, never selected
+     * 
+     * Auto-updated by database trigger from proxy_metrics.success_rate
+     */
+    @NotNull
+    @Column("health_state")
+    private String healthState = ProxyHealthState.HEALTHY.name();
+    
     @Nullable
     @Column("tags")
     private String tags; // JSON array
@@ -168,6 +180,7 @@ public class ProxyNodeEntity implements Serializable, Persistable<UUID> {
         this.registeredAt = Instant.now();
         this.lastHealthcheck = builder.lastHealthcheck;
         this.status = builder.status != null ? builder.status : ProxyStatus.ONLINE.name();
+        this.healthState = builder.healthState != null ? builder.healthState : ProxyHealthState.HEALTHY.name();
         this.tags = builder.tags;
     }
     
@@ -196,6 +209,8 @@ public class ProxyNodeEntity implements Serializable, Persistable<UUID> {
     @Nullable public Instant getLastHealthcheck() { return lastHealthcheck; }
     public String getStatus() { return status; }
     public ProxyStatus getStatusEnum() { return ProxyStatus.valueOf(status); }
+    public String getHealthState() { return healthState; }
+    public ProxyHealthState getHealthStateEnum() { return ProxyHealthState.valueOf(healthState); }
     @Nullable public String getTags() { return tags; }
     
     // Setters
@@ -219,6 +234,8 @@ public class ProxyNodeEntity implements Serializable, Persistable<UUID> {
     public void setLastHealthcheck(@Nullable Instant lastHealthcheck) { this.lastHealthcheck = lastHealthcheck; }
     public void setStatus(String status) { this.status = status; }
     public void setStatus(ProxyStatus status) { this.status = status.name(); }
+    public void setHealthState(String healthState) { this.healthState = healthState; }
+    public void setHealthState(ProxyHealthState healthState) { this.healthState = healthState.name(); }
     public void setTags(@Nullable String tags) { this.tags = tags; }
     
     // Domain methods
@@ -276,6 +293,30 @@ public class ProxyNodeEntity implements Serializable, Persistable<UUID> {
     }
     
     /**
+     * Check if proxy is selectable for task assignment.
+     * Must be ONLINE and not in OFFLINE health state.
+     */
+    public boolean isSelectable() {
+        return ProxyStatus.ONLINE.name().equals(this.status) 
+            && !ProxyHealthState.OFFLINE.name().equals(this.healthState)
+            && hasCapacity();
+    }
+    
+    /**
+     * Check if proxy is in preferred (HEALTHY) state.
+     */
+    public boolean isHealthy() {
+        return ProxyHealthState.HEALTHY.name().equals(this.healthState);
+    }
+    
+    /**
+     * Check if proxy is degraded (should log when used).
+     */
+    public boolean isDegraded() {
+        return ProxyHealthState.DEGRADED.name().equals(this.healthState);
+    }
+    
+    /**
      * Calculate load percentage
      */
     public double getLoadPercent() {
@@ -306,6 +347,7 @@ public class ProxyNodeEntity implements Serializable, Persistable<UUID> {
             ", region='" + region + '\'' +
             ", tier='" + tier + '\'' +
             ", status='" + status + '\'' +
+            ", healthState='" + healthState + '\'' +
             ", load=" + currentLoad + "/" + capacity +
             '}';
     }
@@ -328,6 +370,7 @@ public class ProxyNodeEntity implements Serializable, Persistable<UUID> {
         private String authPassword;
         private Instant lastHealthcheck;
         private String status;
+        private String healthState;
         private String tags;
         
         public Builder id(UUID id) { this.id = id; return this; }
@@ -349,6 +392,8 @@ public class ProxyNodeEntity implements Serializable, Persistable<UUID> {
         public Builder lastHealthcheck(Instant lastHealthcheck) { this.lastHealthcheck = lastHealthcheck; return this; }
         public Builder status(String status) { this.status = status; return this; }
         public Builder status(ProxyStatus status) { this.status = status.name(); return this; }
+        public Builder healthState(String healthState) { this.healthState = healthState; return this; }
+        public Builder healthState(ProxyHealthState healthState) { this.healthState = healthState.name(); return this; }
         public Builder tags(String tags) { this.tags = tags; return this; }
         
         public Builder auth(String username, String password) {

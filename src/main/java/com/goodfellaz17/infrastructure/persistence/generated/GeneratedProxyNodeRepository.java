@@ -145,11 +145,103 @@ public interface GeneratedProxyNodeRepository extends R2dbcRepository<ProxyNodeE
     Mono<ProxyNodeEntity> markOnline(UUID proxyId);
     
     /**
+     * Update health state for a proxy node.
+     */
+    @Query("UPDATE proxy_nodes SET health_state = :healthState WHERE id = :proxyId RETURNING *")
+    Mono<ProxyNodeEntity> updateHealthState(UUID proxyId, String healthState);
+    
+    /**
      * Find proxies needing healthcheck.
      */
     @Query("SELECT * FROM proxy_nodes WHERE status = 'ONLINE' AND (last_healthcheck IS NULL OR last_healthcheck < :cutoff)")
     Flux<ProxyNodeEntity> findNeedingHealthcheck(Instant cutoff);
     
+    // =========================================================================
+    // Phase 1: Health-Based Selection Queries
+    // =========================================================================
+    
+    /**
+     * Find best proxies using health_state with tier preference.
+     * 
+     * Selection rules (from architecture spec):
+     * 1. Filter: status=ONLINE, health_state IN (HEALTHY, DEGRADED)
+     * 2. Prefer: health_state=HEALTHY (successRate >= 0.85)
+     * 3. Tier preference: MOBILE > RESIDENTIAL > ISP > DATACENTER
+     * 4. Lowest load wins within same tier/health
+     */
+    @Query("""
+        SELECT pn.* FROM proxy_nodes pn
+        LEFT JOIN proxy_metrics pm ON pn.id = pm.proxy_node_id
+        WHERE pn.status = 'ONLINE'
+          AND pn.health_state IN ('HEALTHY', 'DEGRADED')
+          AND pn.current_load < pn.capacity
+          AND (pm.success_rate IS NULL OR pm.success_rate >= 0.70)
+        ORDER BY 
+            CASE pn.health_state WHEN 'HEALTHY' THEN 1 WHEN 'DEGRADED' THEN 2 ELSE 3 END,
+            CASE pn.tier 
+                WHEN 'MOBILE' THEN 1 
+                WHEN 'RESIDENTIAL' THEN 2 
+                WHEN 'ISP' THEN 3 
+                WHEN 'DATACENTER' THEN 4 
+                ELSE 5 
+            END,
+            pn.current_load ASC
+        LIMIT :limit
+        """)
+    Flux<ProxyNodeEntity> findBestByHealth(int limit);
+    
+    /**
+     * Find best proxies for a specific country using health_state.
+     */
+    @Query("""
+        SELECT pn.* FROM proxy_nodes pn
+        LEFT JOIN proxy_metrics pm ON pn.id = pm.proxy_node_id
+        WHERE pn.status = 'ONLINE'
+          AND pn.health_state IN ('HEALTHY', 'DEGRADED')
+          AND pn.country = :country
+          AND pn.current_load < pn.capacity
+          AND (pm.success_rate IS NULL OR pm.success_rate >= 0.70)
+        ORDER BY 
+            CASE pn.health_state WHEN 'HEALTHY' THEN 1 WHEN 'DEGRADED' THEN 2 ELSE 3 END,
+            CASE pn.tier 
+                WHEN 'MOBILE' THEN 1 
+                WHEN 'RESIDENTIAL' THEN 2 
+                WHEN 'ISP' THEN 3 
+                WHEN 'DATACENTER' THEN 4 
+                ELSE 5 
+            END,
+            pn.current_load ASC
+        LIMIT :limit
+        """)
+    Flux<ProxyNodeEntity> findBestByHealthAndCountry(String country, int limit);
+    
+    /**
+     * Find HEALTHY proxies only (preferred path, no fallback).
+     */
+    @Query("""
+        SELECT pn.* FROM proxy_nodes pn
+        WHERE pn.status = 'ONLINE'
+          AND pn.health_state = 'HEALTHY'
+          AND pn.current_load < pn.capacity
+        ORDER BY 
+            CASE pn.tier 
+                WHEN 'MOBILE' THEN 1 
+                WHEN 'RESIDENTIAL' THEN 2 
+                WHEN 'ISP' THEN 3 
+                WHEN 'DATACENTER' THEN 4 
+                ELSE 5 
+            END,
+            pn.current_load ASC
+        LIMIT :limit
+        """)
+    Flux<ProxyNodeEntity> findHealthyOnly(int limit);
+    
+    /**
+     * Count proxies by health state.
+     */
+    @Query("SELECT COUNT(*) FROM proxy_nodes WHERE health_state = :healthState AND status = 'ONLINE'")
+    Mono<Long> countByHealthState(String healthState);
+
     /**
      * Get pool statistics.
      */
