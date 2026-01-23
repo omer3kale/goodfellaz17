@@ -1,12 +1,15 @@
 ==========================================
- GoodFellaz17 Local Proxy Node
- Port: 9090
- Log:  ./requests.log
+ GoodFellaz17 Enhanced Proxy Node
+==========================================
+ Port:         9090
+ Failure Rate: 0.1 (0.0 = no failures)
+ Delay:        50ms
+ Log:          ./requests.log
 ==========================================
 
-Contract:
-  GET  /health  → {"status": "ONLINE", "nodeId": "..."}
-  POST /execute → Accept task, route to Spotify, return result
+Endpoints:
+  GET  /health  → Node status + config
+  POST /execute → Execute task (with chaos)
+  GET  /stats   → Cumulative statistics
 
 Starting...
-Using Python HTTP server...
