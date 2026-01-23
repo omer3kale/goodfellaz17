@@ -2,6 +2,8 @@
 
 ## 4.1 From Unit Tests to Integration Tests
 
+**The Core Insight:** Phase 1 tests answer the question "Is my logic correct?" Phase 2 tests answer "Does my system work?" The former enables *local reasoning*—a developer can understand `OrderInvariants` without knowing how PostgreSQL handles nullable columns. The latter enables *system reasoning*—we prove that the invariants survive async execution, transaction boundaries, and infrastructure failures. Both are necessary; neither is sufficient alone.
+
 The unit test suite established in Phase 1 validated the correctness of individual domain components in isolation. Twenty-one tests across three clusters—`ProxySelector`, `ProxyHealthRules`, and `OrderInvariants`—achieved 87% line coverage and demonstrated that the MontiCore-generated domain model enforces critical business rules at the object level. However, unit tests operate under a fundamental limitation: they cannot verify that components behave correctly when composed into a running system with real infrastructure dependencies.
 
 Consider the `OrderInvariants` class, which enforces six mathematical constraints on order state (INV-1 through INV-6). In unit tests, these invariants are validated against in-memory `Order` objects constructed directly in test code. This approach confirms that the validation logic itself is correct, but it cannot answer deeper questions:
@@ -176,7 +178,7 @@ This pattern polls the database every 2 seconds, up to a 3-minute timeout, until
 
 ### 4.3.1 Week 1: Infrastructure Preconditions
 
-The first three integration tests serve as a "circuit breaker" for the test suite. They validate that the test infrastructure itself is functional before attempting higher-level scenarios. If any Week 1 test fails, all subsequent tests are meaningless—they would fail due to infrastructure problems, not application bugs.
+The first three integration tests serve as a "circuit breaker" for the test suite. They validate that the test infrastructure itself is functional before attempting higher-level scenarios. If any Week 1 test fails, all subsequent tests are meaningless—they would fail due to infrastructure problems, not application bugs. As shown in **Figure 4.2**, each component—PostgreSQL container, Redis container, and Spring Boot application context—must be verified independently before composite behavior can be tested.
 
 **Test 1: `test_postgres_container_is_running`**
 
@@ -210,7 +212,7 @@ If this test passes, the application is ready to handle requests.
 
 ### 4.3.2 Week 2: Happy-Path Order Lifecycle
 
-The happy-path test validates the complete order lifecycle under ideal conditions: a customer places an order, delivery workers execute all plays successfully, and the order reaches `COMPLETED` status with all invariants satisfied.
+The happy-path test validates the complete order lifecycle under ideal conditions: a customer places an order, delivery workers execute all plays successfully, and the order reaches `COMPLETED` status with all invariants satisfied. **This test validates INV-1 (quantity conservation), INV-4 (balance conservation), and INV-6 (idempotence) as defined in Section 3.2.**
 
 **Scenario Setup:**
 
@@ -246,7 +248,7 @@ This test validates that under normal operation, the system correctly processes 
 
 ### 4.3.3 Week 3: Partial Proxy Failure
 
-The chaos test validates system behavior when proxies degrade during order execution. This scenario exercises the `ProxyHealthRules` logic that was unit-tested in Phase 1, but now in a realistic context where degradation affects in-flight tasks.
+The chaos test validates system behavior when proxies degrade during order execution. This scenario exercises the `ProxyHealthRules` logic that was unit-tested in Phase 1, but now in a realistic context where degradation affects in-flight tasks. **This test validates all six invariants (INV-1 through INV-6), with particular emphasis on INV-3 (refund proportionality) under failure conditions, as defined in Section 3.2.**
 
 **Scenario Setup:**
 
