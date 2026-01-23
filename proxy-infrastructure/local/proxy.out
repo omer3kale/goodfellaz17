@@ -1,0 +1,12 @@
+==========================================
+ GoodFellaz17 Local Proxy Node
+ Port: 9090
+ Log:  ./requests.log
+==========================================
+
+Contract:
+  GET  /health  → {"status": "ONLINE", "nodeId": "..."}
+  POST /execute → Accept task, route to Spotify, return result
+
+Starting...
+Using Python HTTP server...

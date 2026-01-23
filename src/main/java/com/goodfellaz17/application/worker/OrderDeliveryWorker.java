@@ -3,6 +3,7 @@ package com.goodfellaz17.application.worker;
 import com.goodfellaz17.application.metrics.DeliveryMetrics;
 import com.goodfellaz17.application.testing.FailureInjectionService;
 import com.goodfellaz17.domain.model.generated.*;
+import com.goodfellaz17.infrastructure.proxy.ProxyExecutorClient;
 import com.goodfellaz17.infrastructure.persistence.OrderProgressUpdater;
 import com.goodfellaz17.infrastructure.persistence.generated.GeneratedOrderRepository;
 import com.goodfellaz17.infrastructure.persistence.generated.OrderTaskRepository;
@@ -120,6 +121,10 @@ public class OrderDeliveryWorker {
     /** Failure injection service (only active in dev/local) */
     @Autowired(required = false)
     private FailureInjectionService failureInjectionService;
+    
+    /** Proxy executor client for real proxy calls (Phase 3 infra) */
+    @Autowired(required = false)
+    private ProxyExecutorClient proxyExecutorClient;
     
     public OrderDeliveryWorker(
             OrderTaskRepository taskRepository,
@@ -299,13 +304,15 @@ public class OrderDeliveryWorker {
     }
     
     /**
-     * Execute the actual delivery (simulated for now).
+     * Execute the actual delivery.
      * 
-     * In production, this would:
-     * 1. Connect to Spotify via proxy
-     * 2. Execute play commands
-     * 3. Verify delivery
-     * 4. Return success/failure
+     * When ProxyExecutorClient is available and enabled:
+     * - Calls real proxy node via HTTP
+     * - Returns actual execution result
+     * 
+     * Otherwise (simulated mode):
+     * - Uses Mono.delay() to simulate execution
+     * - Used for thesis tests and when proxy infra unavailable
      */
     private Mono<DeliveryResult> executeDelivery(OrderTaskEntity task, ProxySelection proxy) {
         log.info("TASK_EXECUTING | taskId={} | orderId={} | seq={} | qty={} | proxy={}", 
@@ -329,7 +336,33 @@ public class OrderDeliveryWorker {
             ? failureInjectionService.injectLatency() 
             : Mono.empty();
         
-        // Simulate execution time
+        // === REAL PROXY EXECUTION (Phase 3) ===
+        if (proxyExecutorClient != null && proxyExecutorClient.isEnabled()) {
+            log.debug("USING_REAL_PROXY | taskId={} | proxyId={}", task.getId(), proxy.proxyId());
+            
+            return latencyInjection
+                .then(proxyExecutorClient.executeTask(
+                    task.getId().toString(),
+                    task.getOrderId().toString(),
+                    task.getQuantity(),
+                    null, // trackUrl not stored on task - would need to fetch from order
+                    proxy.proxyId()
+                ))
+                .map(result -> {
+                    if (!result.success()) {
+                        throw new RuntimeException("Proxy execution failed: " + result.message());
+                    }
+                    return new DeliveryResult(
+                        task.getId(),
+                        result.plays(),
+                        true,
+                        proxy.proxyId(),
+                        Duration.ofMillis(SIMULATED_EXECUTION_MS) // TODO: Get real duration
+                    );
+                });
+        }
+        
+        // === SIMULATED EXECUTION (Default/Thesis mode) ===
         return latencyInjection
             .then(Mono.delay(Duration.ofMillis(SIMULATED_EXECUTION_MS)))
             .map(v -> {

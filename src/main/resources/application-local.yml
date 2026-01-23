@@ -101,6 +101,25 @@ proxy:
     enabled: false
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# PHASE 3: SELF-HOSTED PROXY INFRASTRUCTURE
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# To test with real proxy:
+#   1. Start the proxy: cd proxy-infrastructure/local && ./proxy-node.sh 9090
+#   2. Set app.proxy.enabled=true below
+#   3. Run the app - deliveries will call http://localhost:9090/execute
+#
+# Production:
+#   - Set app.proxy.base-url to your deployed proxy cluster
+#   - Set app.proxy.enabled=true
+#
+app:
+  proxy:
+    base-url: http://localhost:9090
+    enabled: false  # Set to true to use real proxy node
+    timeout-ms: 5000
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # LOCAL STRIPE (test mode)
 # ═══════════════════════════════════════════════════════════════════════════════
 
