@@ -116,7 +116,7 @@ proxy:
 app:
   proxy:
     base-url: http://localhost:9090
-    enabled: false  # Set to true to use real proxy node
+    enabled: true   # Force real proxy path - no more simulations
     timeout-ms: 5000
 
 # ═══════════════════════════════════════════════════════════════════════════════
