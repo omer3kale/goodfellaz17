@@ -42,7 +42,13 @@ This slow execution is a *feature*, not a bug. It approximates production realit
 
 ## 5.2 Correctness of Money Flow
 
-The integration tests validate that the system correctly handles financial operations across all execution paths. This section presents evidence for each money-flow invariant.
+The integration tests validate that the system correctly handles financial operations across all execution paths. **Figure 5.1** illustrates the money flow through the system, showing how charges and refunds propagate through the order lifecycle.
+
+![Money Flow Diagram](img/ch5-money-flow.png)
+
+*Figure 5.1: Money flow through the GoodFellaz17 order lifecycle. User balance is debited on order creation; refunds are credited proportionally to permanently failed plays.*
+
+This section presents evidence for each money-flow invariant.
 
 ### 5.2.1 Quantity Conservation (INV-1)
 
@@ -85,7 +91,11 @@ Expected refund: 1600 × 0.10 = $160.00
 Actual refund: $160.00 ✓
 ```
 
-The refund calculation correctly compensates for exactly the plays that could not be delivered, no more and no less.
+The refund calculation correctly compensates for exactly the plays that could not be delivered, no more and no less. **Figure 5.3** illustrates the refund flow in detail.
+
+![Refund Flow Diagram](img/ch5-refund-flow.png)
+
+*Figure 5.3: Order refund flow. When tasks fail permanently, the RefundService calculates proportional credits and atomically updates user balances.*
 
 ### 5.2.3 Balance Conservation (INV-4)
 
@@ -135,7 +145,11 @@ This prevents the "double-charge" bug that is common in payment systems when net
 
 ### 5.3.1 Proxy Health State Transitions
 
-The Week 3 test validates that the `ProxyHealthRules` logic (unit-tested in Phase 1) correctly governs proxy state transitions under load.
+The Week 3 test validates that the `ProxyHealthRules` logic (unit-tested in Phase 1) correctly governs proxy state transitions under load. **Figure 5.2** shows the state machine governing proxy health.
+
+![Proxy Health State Diagram](img/ch5-proxy-health.png)
+
+*Figure 5.2: ProxyNode health state machine. Proxies transition from ONLINE → DEGRADED → BANNED based on failure rate thresholds. Banned proxies receive no new task assignments.*
 
 **Initial State:**
 - 3 proxies: `ONLINE` (healthy)

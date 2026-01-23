@@ -18,24 +18,9 @@ The testing literature distinguishes between *solitary* tests (single unit, all 
 
 **Figure 4.1** illustrates this evolution. The unit test layer (bottom) validates MontiCore-generated entities and services in isolation. The integration test layer (middle) validates the Spring Boot application with real PostgreSQL and Redis containers. Together, these layers provide defense-in-depth: if a regression breaks an invariant, it will be caught either at the unit level (fast feedback) or the integration level (realistic context).
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                   Manual / E2E Tests                    │  ← Future work
-├─────────────────────────────────────────────────────────┤
-│              Integration Tests (Phase 2)                │  ← 5 tests
-│   ┌─────────────┐  ┌─────────────┐  ┌─────────────┐    │
-│   │ Week 1:     │  │ Week 2:     │  │ Week 3:     │    │
-│   │ Infra (3)   │  │ Happy (1)   │  │ Chaos (1)   │    │
-│   └─────────────┘  └─────────────┘  └─────────────┘    │
-├─────────────────────────────────────────────────────────┤
-│                 Unit Tests (Phase 1)                    │  ← 21 tests
-│   ┌─────────────┐  ┌─────────────┐  ┌─────────────┐    │
-│   │ ProxySelect │  │ HealthRules │  │ OrderInvar  │    │
-│   │    (7)      │  │    (7)      │  │    (7)      │    │
-│   └─────────────┘  └─────────────┘  └─────────────┘    │
-└─────────────────────────────────────────────────────────┘
-```
-*Figure 4.1: Test Pyramid Evolution from Phase 1 to Phase 2*
+![Test Pyramid Evolution from Phase 1 to Phase 2](img/ch4-architecture.png)
+
+*Figure 4.1: Test Pyramid Evolution from Phase 1 to Phase 2. The unit test layer (bottom) validates MontiCore-generated entities in isolation; the integration test layer (middle) validates the complete Spring Boot application against real PostgreSQL and Redis containers.*
 
 ---
 
@@ -137,37 +122,9 @@ This pattern polls the database every 2 seconds, up to a 3-minute timeout, until
 
 **Figure 4.2** shows the complete test harness architecture:
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                        Test Class                                │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │ @SpringBootTest(webEnvironment = RANDOM_PORT)              │ │
-│  │ @Testcontainers                                            │ │
-│  └────────────────────────────────────────────────────────────┘ │
-│                              │                                   │
-│              ┌───────────────┼───────────────┐                  │
-│              ▼               ▼               ▼                  │
-│  ┌──────────────────┐ ┌──────────────┐ ┌──────────────┐        │
-│  │ PostgreSQL 16    │ │ Redis 7      │ │ Spring Boot  │        │
-│  │ Container        │ │ Container    │ │ Context      │        │
-│  │ (Testcontainers) │ │              │ │              │        │
-│  └────────┬─────────┘ └──────┬───────┘ └──────┬───────┘        │
-│           │                  │                │                 │
-│           └──────────────────┼────────────────┘                 │
-│                              ▼                                  │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │                   Application Services                     │ │
-│  │  OrderService │ ProxyRouter │ DeliveryWorker │ RefundSvc   │ │
-│  └────────────────────────────────────────────────────────────┘ │
-│                              │                                  │
-│                              ▼                                  │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │                   Test Assertions                          │ │
-│  │  • HTTP Response Codes (WebTestClient)                     │ │
-│  │  • Database State (R2DBC queries)                          │ │
-│  │  • Invariant Validation (OrderInvariantValidator)          │ │
-│  │  • Async Completion (Awaitility)                           │ │
-│  └────────────────────────────────────────────────────────────┘ │
+![Integration Test Harness Architecture](img/ch4-harness.png)
+
+*Figure 4.2: Integration Test Harness Architecture. Docker containers for PostgreSQL 16 and Redis 7 are orchestrated by Testcontainers. The Spring Boot application context connects to these ephemeral containers via dynamically-assigned ports. Test assertions verify HTTP responses, database state, and invariant compliance.*
 └──────────────────────────────────────────────────────────────────┘
 ```
 *Figure 4.2: Integration Test Harness Architecture*
@@ -297,7 +254,13 @@ This test demonstrates that the invariants proven correct in unit tests remain v
 
 ## 4.4 Invariants as Cross-Cutting Contracts
 
-The six invariants defined in Section 3.2 serve as cross-cutting contracts that must hold at every layer of the testing pyramid. Table 4.1 shows where each invariant is validated:
+The six invariants defined in Section 3.2 serve as cross-cutting contracts that must hold at every layer of the testing pyramid. **Figure 4.3** provides a visual reference for these invariants.
+
+![Invariants Table](img/ch4-invariants-table.png)
+
+*Figure 4.3: The six order invariants that serve as cross-cutting contracts. Each invariant is validated at both the unit test layer (fast feedback) and integration test layer (realistic context).*
+
+Table 4.1 shows where each invariant is validated:
 
 | Invariant | Description | Unit Test | Integration Test |
 |-----------|-------------|-----------|------------------|
