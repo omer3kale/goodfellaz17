@@ -13,16 +13,7 @@ proxy:
   hybrid:
     enabled: false
 
-# Feature flags for tests
-goodfellaz17:
-  worker:
-    enabled: true
-  refund:
-    enabled: false  # Disable refunds in tests to avoid balance changes
-
-# Reduce logging noise in tests
-logging:
-  level:
-    root: WARN
-    com.goodfellaz17: DEBUG
-    org.testcontainers: INFO
+# Disable background task executor for tests (runs manually in unit tests)
+app:
+  task-executor:
+    enabled: false

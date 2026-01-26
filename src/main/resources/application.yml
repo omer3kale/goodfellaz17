@@ -48,13 +48,13 @@ server:
 bot:
   executor:
     max-concurrent: ${BOT_MAX_CONCURRENT:100}
-  
+
   # Compliance thresholds (Spotify detection avoidance)
   compliance:
     max-hourly-spike: 0.05      # 5% max hourly spike
     min-duration-seconds: 35     # Royalty eligibility threshold
     min-session-variance: 5      # Random +/- seconds per session
-  
+
   # Account Farm Configuration
   accounts:
     farm-size: ${ACCOUNT_FARM_SIZE:100}
@@ -67,19 +67,19 @@ proxy:
   health:
     enabled: true
     interval-seconds: 60
-  
+
   # Phase 1: Proxy Machine Configuration (two-machine architecture)
   machine:
     url: ${PROXY_MACHINE_URL:http://localhost:8081}
     enabled: ${PROXY_MACHINE_ENABLED:false}
     timeout-seconds: 30
-  
+
   # Health State Thresholds (from architecture spec)
   selection:
     healthy-threshold: 0.85    # successRate >= 0.85 = HEALTHY
     degraded-threshold: 0.70   # successRate >= 0.70 = DEGRADED
     # successRate < 0.70 = OFFLINE (never selected)
-  
+
   # TOR Network (FREE - Multi-port rotation)
   tor:
     enabled: ${TOR_ENABLED:true}
@@ -87,7 +87,7 @@ proxy:
     ports: ${TOR_PORTS:9050,9051,9052,9060}
     capacity-per-day: 500000
     cost-per-1k: 0.00  # FREE!
-  
+
   # BrightData Residential Proxies
   brightdata:
     enabled: ${BRIGHTDATA_ENABLED:false}
@@ -96,7 +96,7 @@ proxy:
     username: ${BRIGHTDATA_USER:}
     password: ${BRIGHTDATA_PASSWORD:}
     zone: ${BRIGHTDATA_ZONE:residential}
-  
+
   # SOAX Residential Proxies
   soax:
     enabled: ${SOAX_ENABLED:false}
@@ -136,6 +136,10 @@ resend:
 # App Configuration
 app:
   base-url: ${APP_BASE_URL:https://goodfellaz17.onrender.com}
+  task-executor:
+    enabled: true
+    poll-interval-ms: 100
+    max-concurrent-tasks: 10
 
 # SpringDoc OpenAPI / Swagger
 springdoc:

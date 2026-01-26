@@ -20,6 +20,10 @@ app:
     node-id: "mac-node-1"
     host: "localhost"
     port: 9091
+  task-executor:
+    enabled: true
+    poll-interval-ms: 100
+    max-concurrent-tasks: 10
 
 # Spotify Safety Compliance Module
 spotify:

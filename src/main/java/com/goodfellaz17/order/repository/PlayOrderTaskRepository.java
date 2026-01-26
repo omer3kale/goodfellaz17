@@ -64,6 +64,14 @@ public interface PlayOrderTaskRepository extends R2dbcRepository<OrderTask, UUID
     Mono<Long> countByOrderIdAndStatus(@Param("orderId") UUID orderId, @Param("status") String status);
 
     /**
+     * Find PENDING tasks for background executor with limit.
+     * Used by TaskExecutorWorker to poll tasks for automatic execution.
+     * Returns at most :limit tasks, ordered by creation time.
+     */
+    @Query("SELECT * FROM pipeline_order_tasks WHERE status = 'PENDING' ORDER BY created_at ASC LIMIT :limit")
+    Flux<OrderTask> findPendingTasks(@Param("limit") int limit);
+
+    /**
      * Find tasks completed within a time range
      */
     @Query("SELECT * FROM pipeline_order_tasks WHERE completed_at BETWEEN :startTime AND :endTime")
