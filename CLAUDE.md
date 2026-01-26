@@ -72,6 +72,22 @@ When you say "write tests" or "implement next", Claude should prioritize in this
 
 If you say "move on" or "next scenario", Claude assumes the current layer is solid and focuses on the next layer, not re-design.
 
+#### 5. Invariant-Aware Proposals
+
+When proposing changes (new features, tests, adapters, or services), Claude must:
+
+1. **State the relevant domain invariants** (as bullet points) that this change assumes or affects.
+2. **Explain how the change preserves or strengthens** those invariants.
+3. **If an invariant would be weakened or broken**, stop and ask for confirmation before proceeding.
+
+Example:
+- **Invariant:** For each Order: `quantity == tasks.size`, `status ∈ {PENDING, ACTIVE, COMPLETED, FAILED}`
+- **Invariant:** An ACTIVE order must have at least one task in PENDING or EXECUTING state
+- **Proposed Change:** Add retry logic to `TaskExecutionService`
+- **Invariant Impact:** Task count stays constant (no new tasks created on retry); final Order status still matches tasks; invariants **strengthened** (retry reduces final FAILED orders)
+
+This mirrors MontiCore's context conditions (CoCos): each code change carries a local well-formedness check.
+
 ### Reactive Correctness
 - [ ] No blocking calls in reactive methods (no .block())
 - [ ] Mono/Flux lazy evaluation verified
