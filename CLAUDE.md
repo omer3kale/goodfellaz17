@@ -17,12 +17,60 @@
 - [ ] No null pointer exceptions (Optional used correctly)
 - [ ] Compilation clean (no warnings)
 
-### Testing
-- [ ] Unit tests: 100% method coverage (8 tests pass)
-- [ ] Integration tests: golden path E2E with real DB
-- [ ] Chaos test: 500 concurrent orders validated
-- [ ] All async operations tested with StepVerifier
-- [ ] Error paths tested (null inputs, invalid states)
+### Testing & Quality Gates
+
+#### 1. Test Pyramid (Required)
+
+I maintain a three-layer test pyramid for this codebase:
+
+1. **Unit tests (fast, isolated)**
+   - 8+ tests for `OrderOrchestrator` and core domain logic
+   - Use real domain objects, mock only external boundaries (repos, clients)
+   - Cover: happy paths, edge cases, error handling, state transitions, metrics, and reactive behavior
+
+2. **Integration tests (real DB, real HTTP)**
+   - Use Testcontainers with PostgreSQL (or real Omen PostgreSQL in CI)
+   - Validate: `POST /api/orders/create` writes correct rows, task decomposition, metrics aggregation
+   - No mock data: real R2DBC calls, real schema, real JSON over HTTP
+
+3. **Chaos / Load tests (production realism)**
+   - 500+ concurrent order creations against a running instance
+   - Capture: success rate, throughput (orders/sec), avg and P99 latency
+   - Used mainly for thesis evidence and capacity planning, not for every commit
+
+Claude must help me keep this pyramid coherent and up-to-date, not invent extra layers.
+
+#### 2. No Mock Data Philosophy
+
+- Unit tests may mock repositories and external systems, **but test data must always be realistic** (e.g., real-looking track IDs, account IDs, quantities).
+- Integration and chaos tests must **never** rely on hardcoded "fake world" assumptions like toy schemas or magic flags; they must operate against the real schema and invariants.
+- When proposing new tests, Claude should:
+  - Start from real business rules and invariants.
+  - Reuse existing entities, value objects, and factory methods.
+  - Avoid brittle tests that mirror implementation details instead of observable behavior.
+
+#### 3. What Claude Should Do
+
+When I ask for help with tests, Claude should:
+
+- Propose **one concrete test at a time**, starting from the most business-critical case.
+- Show the **intent** of the test first (1–2 sentences), then the code.
+- Prefer improving or extending existing test classes instead of creating new ones.
+- Always make tests:
+  - Fast (suitable for CI)
+  - Deterministic (no flakiness, no time-based randomness)
+  - Readable (clear Arrange–Act–Assert structure)
+
+#### 4. Test Prioritization
+
+When you say "write tests" or "implement next", Claude should prioritize in this order:
+
+1. **Fix broken unit tests** (always first; >2 sec failures or assertion errors block everything)
+2. **Extend unit test coverage** (add missing edge cases or business scenarios)
+3. **Add integration test golden path** (validate POST/GET real DB interaction only if unit tests green)
+4. **Run chaos test** (only after unit + integration stable; capture metrics for thesis)
+
+If you say "move on" or "next scenario", Claude assumes the current layer is solid and focuses on the next layer, not re-design.
 
 ### Reactive Correctness
 - [ ] No blocking calls in reactive methods (no .block())
@@ -47,25 +95,6 @@
 - Secrets detection (gitleaks)
 - Semgrep OWASP-Top-Ten scan
 ```
-
-## Testing Pyramid
-
-### Layer 1: Unit Tests (8 tests)
-- OrderOrchestratorTest.java
-- Mocked repositories
-- Testing: happy path, errors, transitions, metrics
-- Execution time: <2 sec
-
-### Layer 2: Integration Tests (3 tests)
-- Real PostgreSQL via Testcontainers
-- Golden path: POST → tasks created → GET metrics
-- Execution time: ~10 sec
-
-### Layer 3: Chaos/Load Testing
-- 500 concurrent order creations
-- Latency metrics (avg, P99)
-- Throughput measurement
-- Execution time: ~30 sec
 
 ## Thesis Evidence Collected
 
