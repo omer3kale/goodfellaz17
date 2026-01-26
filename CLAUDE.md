@@ -1,35 +1,22 @@
-# CLAUDE.md - Self-Audit Checklist
+# CLAUDE.md: Development Contract for goodfellaz17
 
-**Purpose:** Document quality gates and testing methodology for thesis evidence.
+This file is the single source of truth for how Claude should help with this codebase.
 
-## Code Quality Checkpoints
+---
 
-### Security
-- [ ] No hardcoded secrets (API keys, passwords, DB credentials)
-- [ ] No SQL injection vectors (all R2DBC queries parameterized)
-- [ ] Input validation on all public endpoints
-- [ ] Exception handling doesn't leak sensitive info
-- [ ] Semgrep OWASP scan passes
+## Testing & Quality Gates
 
-### Type Safety (Java 23)
-- [ ] No raw types or unchecked casts
-- [ ] All Mono/Flux properly typed
-- [ ] No null pointer exceptions (Optional used correctly)
-- [ ] Compilation clean (no warnings)
+### 1. Test Pyramid (Required)
 
-### Testing & Quality Gates
-
-#### 1. Test Pyramid (Required)
-
-I maintain a three-layer test pyramid for this codebase:
+I maintain a three-layer test pyramid:
 
 1. **Unit tests (fast, isolated)**
    - 8+ tests for `OrderOrchestrator` and core domain logic
    - Use real domain objects, mock only external boundaries (repos, clients)
-   - Cover: happy paths, edge cases, error handling, state transitions, metrics, and reactive behavior
+   - Cover: happy paths, edge cases, error handling, state transitions, metrics, reactive behavior
 
 2. **Integration tests (real DB, real HTTP)**
-   - Use Testcontainers with PostgreSQL (or real Omen PostgreSQL in CI)
+   - Use Testcontainers with PostgreSQL (or real HP Omen PostgreSQL in CI)
    - Validate: `POST /api/orders/create` writes correct rows, task decomposition, metrics aggregation
    - No mock data: real R2DBC calls, real schema, real JSON over HTTP
 
@@ -38,9 +25,11 @@ I maintain a three-layer test pyramid for this codebase:
    - Capture: success rate, throughput (orders/sec), avg and P99 latency
    - Used mainly for thesis evidence and capacity planning, not for every commit
 
-Claude must help me keep this pyramid coherent and up-to-date, not invent extra layers.
+**Claude must keep this pyramid coherent and up-to-date, not invent extra layers.**
 
-#### 2. No Mock Data Philosophy
+---
+
+### 2. No Mock Data Philosophy
 
 - Unit tests may mock repositories and external systems, **but test data must always be realistic** (e.g., real-looking track IDs, account IDs, quantities).
 - Integration and chaos tests must **never** rely on hardcoded "fake world" assumptions like toy schemas or magic flags; they must operate against the real schema and invariants.
@@ -49,7 +38,26 @@ Claude must help me keep this pyramid coherent and up-to-date, not invent extra 
   - Reuse existing entities, value objects, and factory methods.
   - Avoid brittle tests that mirror implementation details instead of observable behavior.
 
-#### 3. What Claude Should Do
+---
+
+### 3. Invariant-Aware Proposals (MontiCore CoCo Discipline)
+
+When proposing changes (new features, tests, adapters), Claude must:
+
+1. **State the domain invariants** relevant to that change (as bullet points).
+2. **Explain how the change preserves or strengthens them.**
+3. **If an invariant would be weakened or broken, stop and ask for confirmation** before proceeding.
+
+Example:
+```
+Invariant: "For each Order: quantity == tasks.size"
+Proposal: "Add retry logic to TaskExecutionService"
+Impact: Invariant still holds (task count doesn't change); no stale tasks left PENDING.
+```
+
+---
+
+### 4. What Claude Should Do
 
 When I ask for help with tests, Claude should:
 
@@ -61,82 +69,140 @@ When I ask for help with tests, Claude should:
   - Deterministic (no flakiness, no time-based randomness)
   - Readable (clear Arrange–Act–Assert structure)
 
-#### 4. Test Prioritization
+When I ask to "move on" or "implement next", Claude should assume the pyramid is in place and focus on the next missing layer or scenario, not re-design the whole strategy.
 
-When you say "write tests" or "implement next", Claude should prioritize in this order:
+---
 
-1. **Fix broken unit tests** (always first; >2 sec failures or assertion errors block everything)
-2. **Extend unit test coverage** (add missing edge cases or business scenarios)
-3. **Add integration test golden path** (validate POST/GET real DB interaction only if unit tests green)
-4. **Run chaos test** (only after unit + integration stable; capture metrics for thesis)
+## Architecture & Design
 
-If you say "move on" or "next scenario", Claude assumes the current layer is solid and focuses on the next layer, not re-design.
+### Hexagonal Ports/Adapters Pattern
 
-#### 5. Invariant-Aware Proposals
+The codebase follows domain-driven design with clear boundaries:
 
-When proposing changes (new features, tests, adapters, or services), Claude must:
+- **Domain Layer** (pure Java, zero framework dependencies)
+  - `Order`, `OrderTask` entities with clear invariants
+  - `OrderOrchestrator` service (business logic)
+  - `SpotifyPlayPort` interface (abstraction for external play execution)
+  - DTOs: `SpotifyPlayCommand`, `PlayResult`
 
-1. **State the relevant domain invariants** (as bullet points) that this change assumes or affects.
-2. **Explain how the change preserves or strengthens** those invariants.
-3. **If an invariant would be weakened or broken**, stop and ask for confirmation before proceeding.
+- **Service Layer** (Spring, Reactive)
+  - `TaskExecutionService` (orchestrates task lifecycle PENDING → EXECUTING → COMPLETED/FAILED)
+  - Validates preconditions, builds commands, handles errors + retries
 
-Example:
-- **Invariant:** For each Order: `quantity == tasks.size`, `status ∈ {PENDING, ACTIVE, COMPLETED, FAILED}`
-- **Invariant:** An ACTIVE order must have at least one task in PENDING or EXECUTING state
-- **Proposed Change:** Add retry logic to `TaskExecutionService`
-- **Invariant Impact:** Task count stays constant (no new tasks created on retry); final Order status still matches tasks; invariants **strengthened** (retry reduces final FAILED orders)
+- **Adapter Layer** (swappable implementations)
+  - `LocalPlayAdapter` (dummy 90% success rate for local dev)
+  - Later: `RealProxySpotifyAdapter` (real Spotify/proxy calls)
+  - **Zero changes to domain when swapping adapters**
 
-This mirrors MontiCore's context conditions (CoCos): each code change carries a local well-formedness check.
+- **REST Layer**
+  - `OrderController` with endpoints:
+    - `POST /api/orders/create` (create order + decompose into tasks)
+    - `GET /api/orders/{id}` (fetch order + tasks)
+    - `POST /api/orders/{id}/tasks/{taskId}/execute` (manual task execution)
+    - `GET /api/orders/metrics` (aggregated order/task metrics)
 
-### Reactive Correctness
-- [ ] No blocking calls in reactive methods (no .block())
-- [ ] Mono/Flux lazy evaluation verified
-- [ ] Proper subscription handling (no premature eval)
-- [ ] Database operations non-blocking (R2DBC)
+---
 
-### Database (R2DBC)
-- [ ] All JPA annotations removed
-- [ ] @Table/@Column from org.springframework.data.relational
-- [ ] UUID generation before insert
-- [ ] Relationships via FK fields (no @OneToMany)
-- [ ] Transactions explicit with Mono/Flux operators
+## Current Status (Session 2 Complete)
 
-## Pre-Commit Gates
+✅ **Adapter layer fully implemented:**
+- SpotifyPlayPort + DTOs
+- TaskExecutionService (PENDING → EXECUTING → COMPLETED/FAILED lifecycle)
+- LocalPlayAdapter (dummy 90% success implementation)
+- REST endpoint for manual task execution
+- 3 unit tests (TaskExecutionServiceTest) - all passing
+- 1 smoke test validating full chain
 
-```yaml
-- Trailing whitespace (corrected)
-- End-of-file newlines (corrected)
-- YAML validation
-- Large files rejected (>5MB)
-- Secrets detection (gitleaks)
-- Semgrep OWASP-Top-Ten scan
-```
+✅ **Testing framework complete:**
+- 8 OrderOrchestratorTest tests (unit)
+- 3 TaskExecutionServiceTest tests (service layer)
+- 1 smoke test (full chain)
+- All pre-commit gates active (semgrep, gitleaks, formatting)
 
-## Thesis Evidence Collected
+✅ **Git history clean:**
+- 6 commits this session
+- All gates pass
+- Ready for production development
 
-### Methodology
-- Three-layer testing strategy
-- R2DBC reactive patterns
-- Error handling approaches
-- Scalability validation
+---
 
-### Results
-- Test coverage: 100% orchestrator
-- Success rate under load: ~95%
-- Latency: [avg] ms / [P99] ms
-- Throughput: [X] orders/sec
+## Next Steps (Choose One Path)
 
-### Appendices
-- Unit test source + output
-- Integration test source + output
-- Chaos test results
-- Pre-commit configuration
+### Path A: Automatic Background Executor (Scheduler)
+**Time:** 1-2 hours | **Complexity:** Medium
 
-## Last Updated
+Wire TaskExecutionService into a scheduled worker that:
+- Continuously polls DB for PENDING tasks (e.g., every 100ms)
+- Executes each task concurrently (threadpool, not blocking)
+- Updates task status automatically
+- Result: Orders complete without manual REST trigger
 
-```
-Date: 2026-01-26
-Time: 22:49
-Commits: OrderOrchestratorTest + Security Gates
-Status: All quality gates passing
-```
+**Use case:** Production readiness (simulates real async worker)
+
+---
+
+### Path B: Real Spotify/Proxy Integration
+**Time:** 2-3 hours | **Complexity:** High
+
+1. Create `RealProxySpotifyAdapter implements SpotifyPlayPort`
+2. Swap bean configuration (no code changes to domain)
+3. Extract real `trackId` from Order instead of placeholder
+4. Point to real Spotify/proxy infrastructure
+5. Test with manual REST endpoint or scheduler
+
+**Use case:** Thesis validation (proves actual Spotify integration works)
+
+---
+
+### Path C: Chaos Test of New Endpoint
+**Time:** 1-2 hours | **Complexity:** Low
+
+Modify existing chaos test to:
+- `POST /api/orders/create` (generate real orders)
+- Immediately execute each task's endpoint
+- Measure real latency of full chain
+- Capture success rate, throughput, P99 metrics
+
+**Use case:** Thesis results (latency under concurrent load)
+
+---
+
+### Recommended Sequence
+1. **Path A** (scheduler) → Enables production-like execution
+2. **Path B** (real adapter) → Validates Spotify connectivity
+3. **Path C** (chaos endpoint) → Measures performance under load
+4. **Thesis:** Use metrics from A+C for results section
+
+---
+
+## Thesis Integration
+
+**Chapter 3 (Methodology):**
+- Reference CLAUDE.md for invariant-aware architecture discipline
+- Use adapter layer code as proof of hexagonal ports/adapters pattern
+- Cite unit + smoke tests as validation strategy
+
+**Chapter 4 (Results):**
+- Scheduler latency metrics (avg, P99)
+- Chaos test results (throughput, success rate)
+- Endpoint performance under concurrent load
+
+**Appendices:**
+- OrderOrchestrator test source
+- TaskExecutionService test source
+- Smoke test output
+- Pre-commit gate configuration
+
+---
+
+## Key Constraints
+
+- **No mock data** in tests (realistic payloads always)
+- **One test at a time** (propose, not bulk changes)
+- **Invariants first** (state them before proposing changes)
+- **Minimal markdown** (keep only CLAUDE.md, details in code/git)
+- **Clean git history** (descriptive commits, no WIP)
+
+---
+
+**Last Updated:** 2026-01-26 23:30 UTC
