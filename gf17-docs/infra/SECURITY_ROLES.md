@@ -204,7 +204,7 @@ docker compose -f infra/docker-compose.db.yml up -d
    ```bash
    # Rotate password immediately
    ./infra/setup-app-user.sh 'EmergencyNewPassword!'
-   
+
    # Restart application with new password
    ```
 
@@ -227,7 +227,7 @@ docker compose -f infra/docker-compose.db.yml up -d
    ```bash
    # Stop all database connections
    docker stop goodfellaz17-postgres
-   
+
    # This is a CRITICAL incident - escalate immediately
    ```
 
@@ -243,7 +243,7 @@ docker compose -f infra/docker-compose.db.yml up -d
    rm -rf infra/data/postgres
    docker compose -f infra/docker-compose.db.yml up -d
    ./infra/restore-db.sh infra/backups/<last-known-good>.sql.gz
-   
+
    # Re-run V11 with new passwords
    docker exec -i goodfellaz17-postgres psql -U spotifybot_admin -d spotifybot \
      < src/main/resources/db/migration/V11__Create_App_User.sql
@@ -262,9 +262,9 @@ docker compose -f infra/docker-compose.db.yml up -d
 ```bash
 # List all grants for spotifybot_app
 docker exec -it goodfellaz17-postgres psql -U spotifybot_admin -d spotifybot -c "
-SELECT grantee, table_name, privilege_type 
-FROM information_schema.table_privileges 
-WHERE grantee = 'spotifybot_app' 
+SELECT grantee, table_name, privilege_type
+FROM information_schema.table_privileges
+WHERE grantee = 'spotifybot_app'
 ORDER BY table_name, privilege_type;
 "
 ```

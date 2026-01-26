@@ -52,7 +52,7 @@ curl -X POST https://your-domain.com/api/v2 \
     {
       "service": 2,
       "name": "Spotify Plays USA",
-      "type": "Default", 
+      "type": "Default",
       "category": "Spotify",
       "rate": 0.90,
       "min": 100,

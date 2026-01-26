@@ -90,7 +90,7 @@ SPOTIFY_CLIENT_SECRET=your-client-secret
 **Adding real credentials and implementing real external calls MUST NOT change:**
 
 1. ❌ `OrderEntity` schema
-2. ❌ `OrderTaskEntity` schema  
+2. ❌ `OrderTaskEntity` schema
 3. ❌ `BalanceTransactionEntity` schema
 4. ❌ Any of the 4 invariants
 5. ❌ Public API contract (`POST /api/v2/orders`, `GET /api/v2/orders/{id}`)
@@ -159,7 +159,7 @@ SPRING_PROFILES_ACTIVE=local mvn spring-boot:run -DskipTests
 # Quick mode (2k order, ~3 min)
 ./scripts/15k-freeze-test.sh --quick
 
-# Full mode (15k order, ~10 min) 
+# Full mode (15k order, ~10 min)
 ./scripts/15k-freeze-test.sh --full
 
 # With restart (includes app restart mid-execution)

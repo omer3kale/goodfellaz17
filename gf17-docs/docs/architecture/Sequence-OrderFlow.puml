@@ -32,23 +32,23 @@ O --> BO: List<BotTask> [1000 tasks × 100 plays]
 
 loop For each BotTask (parallel)
     BO -> Bot: execute(task)
-    
+
     Bot -> Proxy: getProxy(USA)
     Proxy --> Bot: "us-proxy-42:8080"
-    
+
     Bot -> Account: getAccount(USA)
     Account --> Bot: {email, password}
-    
+
     Bot -> Bot: createChromeDriver(proxy)
     Bot -> Spotify: login(account)
     Spotify --> Bot: session
-    
+
     loop 100 plays
         Bot -> Spotify: GET /track/{id}
         Bot -> Spotify: click(play)
         Bot -> Bot: wait(35s) // royalty threshold
     end
-    
+
     Bot -> Proxy: releaseProxy()
     Bot -> Account: releaseAccount()
     Bot --> BO: completedPlays: 100

@@ -112,28 +112,28 @@ import com.goodfellaz17.cocos.CoCoViolationException;
  * Chart plays require slower drip to avoid Spotify detection.
  */
 public class ChartPlaysComplianceCoCo implements OrderCoCo {
-    
+
     private static final int MAX_HOURLY_CHART_RATE = 500; // 500/hour max
     private static final double MAX_DAILY_SPIKE_PERCENT = 2.0; // 2% max spike
-    
+
     @Override
     public void check(OrderContext ctx) {
         if (!isChartService(ctx.getService().getServiceId())) {
             return; // Only apply to chart services
         }
-        
+
         int hourlyRate = ctx.getQuantity() / ctx.getDeliveryHours();
         if (hourlyRate > MAX_HOURLY_CHART_RATE) {
             throw new CoCoViolationException(
                 "0xGFL20",
                 String.format("Chart plays limited to %d/hour for safety. Requested: %d/hour. " +
-                    "Increase delivery hours to %d+.", 
-                    MAX_HOURLY_CHART_RATE, hourlyRate, 
+                    "Increase delivery hours to %d+.",
+                    MAX_HOURLY_CHART_RATE, hourlyRate,
                     ctx.getQuantity() / MAX_HOURLY_CHART_RATE)
             );
         }
     }
-    
+
     private boolean isChartService(int serviceId) {
         return serviceId == 20; // ELITE Chart Plays
     }
@@ -181,7 +181,7 @@ public record RefillPolicy(
 ) {
     public static final RefillPolicy LIFETIME = new RefillPolicy(365, 10, 3);
     public static final RefillPolicy STANDARD = new RefillPolicy(30, 20, 1);
-    
+
     public boolean isEligibleForRefill(Instant orderDate, int currentCount, int originalCount) {
         boolean withinGuarantee = Instant.now().isBefore(orderDate.plus(Duration.ofDays(guaranteeDays)));
         double dropPercent = ((double)(originalCount - currentCount) / originalCount) * 100;
@@ -205,10 +205,10 @@ import reactor.core.publisher.Mono;
 
 @Service
 public class RefillService {
-    
+
     private final OrderRepositoryPort orderRepo;
     private final SpotifyStatsClient statsClient;
-    
+
     @Scheduled(cron = "0 0 */6 * * *") // Every 6 hours
     public void checkAndRefillOrders() {
         orderRepo.findCompletedWithRefillPolicy()
@@ -216,16 +216,16 @@ public class RefillService {
             .flatMap(this::createRefillOrder)
             .subscribe();
     }
-    
+
     private boolean needsRefill(OrderSymbol order) {
         int currentCount = statsClient.getCurrentPlayCount(order.getLink());
         return order.getRefillPolicy().isEligibleForRefill(
-            order.getCompletedAt(), 
-            currentCount, 
+            order.getCompletedAt(),
+            currentCount,
             order.getQuantity()
         );
     }
-    
+
     private Mono<OrderSymbol> createRefillOrder(OrderSymbol original) {
         int refillAmount = original.getQuantity() - getCurrentCount(original);
         return orderRepo.save(OrderSymbol.refillFrom(original, refillAmount));
@@ -282,7 +282,7 @@ Static HTML/JS dashboard that works on phones and desktops. No backend changes n
     <title>GOODFELLAZ17 - Spotify SMM Panel</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { 
+        body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             color: #fff; min-height: 100vh;
@@ -293,11 +293,11 @@ Static HTML/JS dashboard that works on phones and desktops. No backend changes n
         .card { background: rgba(255,255,255,0.1); border-radius: 12px; padding: 20px; margin: 15px 0; }
         .form-group { margin: 15px 0; }
         .form-group label { display: block; margin-bottom: 8px; color: #ccc; }
-        .form-group input, .form-group select { 
+        .form-group input, .form-group select {
             width: 100%; padding: 12px; border: none; border-radius: 8px;
             background: rgba(255,255,255,0.1); color: #fff; font-size: 16px;
         }
-        .btn { 
+        .btn {
             width: 100%; padding: 15px; border: none; border-radius: 8px;
             background: #1DB954; color: #fff; font-size: 16px; font-weight: bold;
             cursor: pointer; transition: all 0.3s;
@@ -306,7 +306,7 @@ Static HTML/JS dashboard that works on phones and desktops. No backend changes n
         .btn:disabled { background: #666; cursor: not-allowed; }
         .balance { font-size: 2em; color: #1DB954; text-align: center; }
         .services-grid { display: grid; gap: 10px; }
-        .service-item { 
+        .service-item {
             background: rgba(29,185,84,0.2); padding: 15px; border-radius: 8px;
             display: flex; justify-content: space-between; align-items: center;
         }
@@ -318,7 +318,7 @@ Static HTML/JS dashboard that works on phones and desktops. No backend changes n
         .orders-list { max-height: 300px; overflow-y: auto; }
         .order-item { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
         .hidden { display: none; }
-        .toast { 
+        .toast {
             position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
             background: #1DB954; padding: 15px 25px; border-radius: 8px;
             animation: slideUp 0.3s ease;
@@ -351,7 +351,7 @@ Static HTML/JS dashboard that works on phones and desktops. No backend changes n
             <div class="logo">
                 <h1>🎵 GOODFELLAZ17</h1>
             </div>
-            
+
             <!-- Balance Card -->
             <div class="card">
                 <p style="color: #888;">Your Balance</p>
@@ -414,7 +414,7 @@ Static HTML/JS dashboard that works on phones and desktops. No backend changes n
         async function login() {
             apiKey = document.getElementById('api-key').value.trim();
             if (!apiKey) return alert('Please enter API key');
-            
+
             try {
                 const balance = await apiCall('balance');
                 localStorage.setItem('gf17_api_key', apiKey);
@@ -434,7 +434,7 @@ Static HTML/JS dashboard that works on phones and desktops. No backend changes n
         async function showDashboard() {
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('dashboard').classList.remove('hidden');
-            
+
             await Promise.all([
                 loadBalance(),
                 loadServices(),
@@ -450,13 +450,13 @@ Static HTML/JS dashboard that works on phones and desktops. No backend changes n
         async function loadServices() {
             const data = await apiCall('services');
             services = data.services;
-            
+
             // Populate select
             const select = document.getElementById('service-select');
-            select.innerHTML = services.map(s => 
+            select.innerHTML = services.map(s =>
                 `<option value="${s.service}" data-rate="${s.rate}">${s.name} - $${s.rate}/1k</option>`
             ).join('');
-            
+
             // Populate list
             document.getElementById('services-list').innerHTML = services.map(s => `
                 <div class="service-item">
@@ -467,7 +467,7 @@ Static HTML/JS dashboard that works on phones and desktops. No backend changes n
                     <div class="service-rate">$${s.rate}/1k</div>
                 </div>
             `).join('');
-            
+
             // Cost calculator
             select.addEventListener('change', updateCost);
             document.getElementById('order-quantity').addEventListener('input', updateCost);
@@ -485,12 +485,12 @@ Static HTML/JS dashboard that works on phones and desktops. No backend changes n
             // Would need to add orders endpoint - for now show cached
             const orders = JSON.parse(localStorage.getItem('gf17_orders') || '[]');
             const list = document.getElementById('orders-list');
-            
+
             if (orders.length === 0) {
                 list.innerHTML = '<p style="color: #888; text-align: center;">No orders yet</p>';
                 return;
             }
-            
+
             list.innerHTML = orders.slice(0, 10).map(o => `
                 <div class="order-item">
                     <div style="display: flex; justify-content: space-between;">
@@ -508,25 +508,25 @@ Static HTML/JS dashboard that works on phones and desktops. No backend changes n
             const service = parseInt(document.getElementById('service-select').value);
             const link = document.getElementById('order-link').value.trim();
             const quantity = parseInt(document.getElementById('order-quantity').value);
-            
+
             if (!link || !quantity) return alert('Please fill all fields');
-            
+
             try {
                 const data = await apiCall('add', { service, link, quantity });
-                
+
                 // Cache order
                 const orders = JSON.parse(localStorage.getItem('gf17_orders') || '[]');
                 orders.unshift(data);
                 localStorage.setItem('gf17_orders', JSON.stringify(orders.slice(0, 50)));
-                
+
                 // Refresh
                 await loadBalance();
                 await loadOrders();
-                
+
                 // Clear form
                 document.getElementById('order-link').value = '';
                 document.getElementById('order-quantity').value = '';
-                
+
                 showToast(`Order placed! #${data.order.substring(0, 8)}`);
             } catch (e) {
                 alert(e.message || 'Order failed');
@@ -596,7 +596,7 @@ import org.springframework.web.reactive.config.WebFluxConfigurer;
 
 @Configuration
 public class WebConfig implements WebFluxConfigurer {
-    
+
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/**")
@@ -626,7 +626,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 public class ChildPanelSymbol extends SmmSymbol {
-    
+
     private final UUID childId;
     private final String parentApiKey;
     private final String childApiKey;
@@ -635,7 +635,7 @@ public class ChildPanelSymbol extends SmmSymbol {
     private BigDecimal currentBalance;
     private BigDecimal markupPercent; // Price markup for child
     private boolean active;
-    
+
     public ChildPanelSymbol(String parentApiKey, String childName) {
         super(UUID.randomUUID().toString(), SymbolKind.CHILD_PANEL);
         this.childId = UUID.randomUUID();
@@ -647,18 +647,18 @@ public class ChildPanelSymbol extends SmmSymbol {
         this.markupPercent = new BigDecimal("20"); // 20% default markup
         this.active = true;
     }
-    
+
     public BigDecimal calculateChildPrice(BigDecimal baseRate) {
         return baseRate.multiply(BigDecimal.ONE.add(markupPercent.divide(new BigDecimal("100"))));
     }
-    
+
     public void transferBalance(BigDecimal amount) {
         if (currentBalance.add(amount).compareTo(balanceLimit) > 0) {
             throw new IllegalStateException("Transfer exceeds child panel balance limit");
         }
         this.currentBalance = currentBalance.add(amount);
     }
-    
+
     // Getters/setters...
 }
 ```
@@ -690,21 +690,21 @@ private Mono<ResponseEntity<Map<String, Object>>> createChildPanel(String apiKey
     String childName = getString(body, "name");
     BigDecimal balanceLimit = new BigDecimal(getString(body, "limit", "1000"));
     BigDecimal markupPercent = new BigDecimal(getString(body, "markup", "20"));
-    
+
     // Validate parent exists and has permission
     ArtifactScope parentScope = symbolTable.getTenantScope(apiKey);
-    
+
     // Create child panel
     ChildPanelSymbol child = new ChildPanelSymbol(apiKey, childName);
     child.setBalanceLimit(balanceLimit);
     child.setMarkupPercent(markupPercent);
-    
+
     // Register in symbol table
     parentScope.add(child);
-    
-    log.info("Child panel created: parent={}, child={}, name={}", 
+
+    log.info("Child panel created: parent={}, child={}, name={}",
         apiKey.substring(0,8), child.getChildApiKey(), childName);
-    
+
     return Mono.just(ResponseEntity.ok(Map.of(
         "child_key", child.getChildApiKey(),
         "child_name", childName,
@@ -719,7 +719,7 @@ private Mono<ResponseEntity<Map<String, Object>>> createChildPanel(String apiKey
  */
 private Mono<ResponseEntity<Map<String, Object>>> listChildPanels(String apiKey) {
     ArtifactScope scope = symbolTable.getTenantScope(apiKey);
-    
+
     List<Map<String, Object>> children = scope.getSymbols().stream()
         .filter(s -> s.getKind() == SymbolKind.CHILD_PANEL)
         .map(s -> (ChildPanelSymbol) s)
@@ -732,7 +732,7 @@ private Mono<ResponseEntity<Map<String, Object>>> listChildPanels(String apiKey)
             "active", c.isActive()
         ))
         .toList();
-    
+
     return Mono.just(ResponseEntity.ok(Map.of(
         "children", children,
         "count", children.size()
@@ -745,23 +745,23 @@ private Mono<ResponseEntity<Map<String, Object>>> listChildPanels(String apiKey)
 private Mono<ResponseEntity<Map<String, Object>>> transferToChild(String apiKey, Map<String, Object> body) {
     String childKey = getString(body, "child_key");
     BigDecimal amount = new BigDecimal(getString(body, "amount"));
-    
+
     // Resolve parent and child
     ArtifactScope scope = symbolTable.getTenantScope(apiKey);
     ApiKeySymbol parent = scope.<ApiKeySymbol>resolveLocally(apiKey, SymbolKind.API_KEY)
         .orElseThrow(() -> new IllegalArgumentException("Invalid parent API key"));
-    
+
     ChildPanelSymbol child = scope.getSymbols().stream()
         .filter(s -> s.getKind() == SymbolKind.CHILD_PANEL)
         .map(s -> (ChildPanelSymbol) s)
         .filter(c -> c.getChildApiKey().equals(childKey))
         .findFirst()
         .orElseThrow(() -> new IllegalArgumentException("Child panel not found"));
-    
+
     // Transfer
     parent.deductBalance(amount);
     child.transferBalance(amount);
-    
+
     return Mono.just(ResponseEntity.ok(Map.of(
         "parent_balance", parent.getBalance(),
         "child_balance", child.getCurrentBalance(),
@@ -783,15 +783,15 @@ import com.goodfellaz17.symboltable.ChildPanelSymbol;
  * Validates child panel orders don't exceed limits.
  */
 public class ChildPanelLimitCoCo implements OrderCoCo {
-    
+
     @Override
     public void check(OrderContext ctx) {
         if (ctx.getChildPanel() == null) return;
-        
+
         ChildPanelSymbol child = ctx.getChildPanel();
         BigDecimal cost = ctx.getService().calculateCost(ctx.getQuantity());
         BigDecimal childCost = child.calculateChildPrice(cost);
-        
+
         if (childCost.compareTo(child.getCurrentBalance()) > 0) {
             throw new CoCoViolationException(
                 "0xGFL30",
@@ -845,19 +845,19 @@ import reactor.core.publisher.Mono;
 
 @Component
 public class PiFarmClient {
-    
+
     private final WebClient webClient;
-    
+
     @Value("${fulfillment.pi-farm.url:http://localhost:8081}")
     private String piFarmUrl;
-    
+
     @Value("${fulfillment.pi-farm.api-key:}")
     private String piFarmApiKey;
-    
+
     public PiFarmClient(WebClient.Builder webClientBuilder) {
         this.webClient = webClientBuilder.build();
     }
-    
+
     public Mono<FulfillmentResponse> submitOrder(OrderCreatedEvent event) {
         return webClient.post()
             .uri(piFarmUrl + "/api/fulfill")
@@ -874,7 +874,7 @@ public class PiFarmClient {
             .doOnSuccess(r -> log.info("Order {} submitted to Pi Farm: {}", event.orderId(), r.status()))
             .doOnError(e -> log.error("Pi Farm submission failed for {}: {}", event.orderId(), e.getMessage()));
     }
-    
+
     private String mapServiceType(int serviceId) {
         return switch (serviceId) {
             case 1, 2, 22 -> "plays";
@@ -921,10 +921,10 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class OrderFulfillmentListener {
-    
+
     private final PiFarmClient piFarmClient;
     private final OrderRepositoryPort orderRepo;
-    
+
     @Async
     @EventListener
     public void handleOrderCreated(OrderCreatedEvent event) {
@@ -932,7 +932,7 @@ public class OrderFulfillmentListener {
             .flatMap(response -> {
                 // Update order status
                 return orderRepo.updateStatus(
-                    event.orderId(), 
+                    event.orderId(),
                     "PROCESSING",
                     Map.of(
                         "farm_node", response.farmNodeId(),
@@ -960,10 +960,10 @@ import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping("/webhook/fulfillment")
 public class FulfillmentWebhookController {
-    
+
     private final OrderRepositoryPort orderRepo;
     private final ApplicationEventPublisher eventPublisher;
-    
+
     @PostMapping("/progress")
     public Mono<ResponseEntity<Void>> handleProgress(@RequestBody ProgressUpdate update) {
         return orderRepo.updateProgress(
@@ -972,7 +972,7 @@ public class FulfillmentWebhookController {
             update.remainingCount()
         ).thenReturn(ResponseEntity.ok().build());
     }
-    
+
     @PostMapping("/complete")
     public Mono<ResponseEntity<Void>> handleComplete(@RequestBody CompletionUpdate update) {
         return orderRepo.complete(
@@ -1149,15 +1149,15 @@ import java.util.UUID;
 
 @Service
 public class ReferralService {
-    
+
     private static final BigDecimal REFERRAL_BONUS = new BigDecimal("20.00"); // $20 bonus
     private static final BigDecimal SIGNUP_BONUS = new BigDecimal("200.00"); // $200 free credits
     private static final BigDecimal REFERRER_COMMISSION = new BigDecimal("0.05"); // 5% lifetime
-    
+
     public String generateReferralCode(String apiKey) {
         return "GF17_" + apiKey.substring(0, 8).toUpperCase();
     }
-    
+
     public ReferralReward processReferral(String referralCode, String newUserApiKey) {
         // Credit new user with signup bonus
         // Credit referrer with referral bonus
@@ -1189,7 +1189,7 @@ case "referral_stats" -> getReferralStats(key);
 
 PRICING (vs StreamingMafia):
 ✅ USA Plays: $0.12/1k (Mafia: $0.17) → 30% CHEAPER
-✅ Chart Plays: $2.25/1k (Mafia: $2.40) → CHART GUARANTEED  
+✅ Chart Plays: $2.25/1k (Mafia: $2.40) → CHART GUARANTEED
 ✅ Monthly Listeners: $0.99/1k (Mafia: $1.29) → 23% CHEAPER
 ✅ Drip Feed: $0.60/1k → Spotify safe delivery
 
@@ -1202,7 +1202,7 @@ EXCLUSIVE FEATURES:
 
 TECHNICAL:
 • 56 unit tests passing
-• O(1) symbol table resolution  
+• O(1) symbol table resolution
 • Neon PostgreSQL + Render hosting
 • 10k req/min capacity
 
@@ -1236,11 +1236,11 @@ Just tested both panels for a client campaign. Here's my honest comparison:
 - Both have drip feed
 
 **DELIVERY:**
-Both delivered within stated timeframes. GF17 uses "CoCos" (compliance checks) 
+Both delivered within stated timeframes. GF17 uses "CoCos" (compliance checks)
 which apparently prevents Spotify detection - had zero drops so far.
 
 **VERDICT:**
-If you're reselling or need child panels, GF17 wins. 
+If you're reselling or need child panels, GF17 wins.
 If you're established with Mafia already, probably not worth switching.
 
 Link: https://goodfellaz17.onrender.com
@@ -1283,29 +1283,29 @@ generate_key() {
 simulate_user() {
     local user_id=$1
     local api_key=$(generate_key)
-    
+
     # 1. Check services
     curl -s "$API_BASE?key=$api_key&action=services" -X POST > /dev/null
-    
+
     # 2. Place orders (randomize service and quantity)
     for i in $(seq 1 $ORDERS_PER_USER); do
         local service=$((1 + RANDOM % 9))
         local quantity=$((100 + RANDOM % 900))
         local link="spotify:track:loadtest_${user_id}_${i}"
-        
+
         response=$(curl -s "$API_BASE?key=$api_key&action=add" -X POST \
             -H "Content-Type: application/json" \
             -d "{\"service\":$service,\"quantity\":$quantity,\"link\":\"$link\"}")
-        
+
         if echo "$response" | grep -q "order"; then
             echo "✅ User $user_id: Order $i placed"
         else
             echo "❌ User $user_id: Order $i failed - $response"
         fi
-        
+
         sleep 0.1 # 100ms between orders
     done
-    
+
     # 3. Check balance
     curl -s "$API_BASE?key=$api_key&action=balance" -X POST > /dev/null
 }
@@ -1316,7 +1316,7 @@ start_time=$(date +%s)
 
 for user in $(seq 1 $CONCURRENT_USERS); do
     simulate_user $user &
-    
+
     # Stagger start by 50ms
     sleep 0.05
 done
@@ -1405,9 +1405,9 @@ import java.util.Map;
 
 @Service
 public class AnalyticsService {
-    
+
     private final SmmSymbolTable symbolTable;
-    
+
     public DailyStats getDailyStats(LocalDate date) {
         return DailyStats.builder()
             .date(date)
@@ -1419,7 +1419,7 @@ public class AnalyticsService {
             .conversionRate(calculateConversionRate(date))
             .build();
     }
-    
+
     public RevenueProjection getProjection(int days) {
         BigDecimal dailyAvg = calculateDailyAverage(7); // Last 7 days
         return RevenueProjection.builder()
@@ -1428,7 +1428,7 @@ public class AnalyticsService {
             .confidence(calculateConfidence())
             .build();
     }
-    
+
     public Map<String, BigDecimal> getRevenueByService() {
         return symbolTable.getAllServices().stream()
             .collect(Collectors.toMap(
@@ -1464,7 +1464,7 @@ case "analytics_projection" -> getRevenueProjection(key, body);
 <body>
     <div class="container">
         <h1>📊 Admin Dashboard</h1>
-        
+
         <!-- Revenue Card -->
         <div class="card">
             <h3>💰 Today's Revenue</h3>
@@ -1483,13 +1483,13 @@ case "analytics_projection" -> getRevenueProjection(key, body);
                 </div>
             </div>
         </div>
-        
+
         <!-- Service Breakdown -->
         <div class="card">
             <h3>🎵 Revenue by Service</h3>
             <div id="service-breakdown"></div>
         </div>
-        
+
         <!-- Projections -->
         <div class="card">
             <h3>📈 30-Day Projection</h3>
@@ -1518,30 +1518,30 @@ Self-service user registration with automatic API key generation.
 @PostMapping("/register")
 public Mono<ResponseEntity<Map<String, Object>>> registerUser(
         @RequestBody Map<String, Object> body) {
-    
+
     String email = getString(body, "email");
     String password = getString(body, "password"); // Hash this!
     String referralCode = getString(body, "referral", null);
-    
+
     // Generate API key
     String apiKey = UUID.randomUUID().toString();
-    
+
     // Create user in symbol table
     ArtifactScope userScope = symbolTable.createTenantScope(apiKey);
     ApiKeySymbol apiKeySymbol = new ApiKeySymbol(
-        apiKey, 
-        UUID.randomUUID(), 
+        apiKey,
+        UUID.randomUUID(),
         new BigDecimal("200.00") // $200 signup bonus
     );
     userScope.add(apiKeySymbol);
-    
+
     // Process referral if provided
     if (referralCode != null) {
         referralService.processReferral(referralCode, apiKey);
     }
-    
+
     log.info("New user registered: email={}, apiKey={}...", email, apiKey.substring(0, 8));
-    
+
     return Mono.just(ResponseEntity.ok(Map.of(
         "api_key", apiKey,
         "balance", "200.00",
@@ -1581,13 +1581,13 @@ async function register() {
     const email = document.getElementById('register-email').value;
     const password = document.getElementById('register-password').value;
     const referral = document.getElementById('register-referral').value;
-    
+
     const res = await fetch('/api/v2/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, referral })
     });
-    
+
     const data = await res.json();
     if (data.api_key) {
         localStorage.setItem('gf17_api_key', data.api_key);
@@ -1642,7 +1642,7 @@ INVESTMENT:
 
 RETURNS:
 ├── Day 1: $15,000 → 17.6x ROI
-├── Week 1: $105,000 → 123x ROI  
+├── Week 1: $105,000 → 123x ROI
 ├── Month 1: $450,000 → 529x ROI
 └── Year 1: $5.4M → 6,353x ROI
 
@@ -1741,4 +1741,3 @@ curl https://goodfellaz17.onrender.com/
 *Status: PLAYBOOK READY - Workspace cleaned - Say "implement" to begin Phase 1*
 *Target: NYE 2025 Market #1 → $5.4M Year 1*
 *Target: NYE 2025 Market #1 → $5.4M Year 1*
-

@@ -60,8 +60,8 @@ static GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine")
 
 @DynamicPropertySource
 static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("spring.r2dbc.url", () -> 
-        "r2dbc:postgresql://" + postgres.getHost() + ":" + postgres.getFirstMappedPort() 
+    registry.add("spring.r2dbc.url", () ->
+        "r2dbc:postgresql://" + postgres.getHost() + ":" + postgres.getFirstMappedPort()
         + "/goodfellaz_test");
     registry.add("spring.redis.host", redis::getHost);
     registry.add("spring.redis.port", redis::getFirstMappedPort);
@@ -88,10 +88,10 @@ The `@BeforeEach` method resets shared state to ensure test independence:
 void setUp() {
     // Reset failure injection to baseline (0% failure)
     failureInjectionService.reset();
-    
+
     // Refresh proxy tier availability
     proxyRouter.refreshAvailableTiers().block();
-    
+
     // Clear any pending tasks from previous tests
     taskQueue.clear().block();
 }
@@ -285,18 +285,18 @@ The `OrderInvariantValidator` class is injected into both test layers, ensuring 
 ```java
 @Component
 public class OrderInvariantValidator {
-    
+
     public ValidationResult validate(Order order) {
         List<String> violations = new ArrayList<>();
-        
+
         // INV-1: Quantity conservation
         int total = order.getDeliveredPlays() + order.getFailedPermanentPlays() + order.getRemains();
         if (total != order.getQuantity()) {
             violations.add("INV-1 violated: delivered + failed + remains != quantity");
         }
-        
+
         // ... remaining invariants ...
-        
+
         return new ValidationResult(violations.isEmpty(), violations);
     }
 }

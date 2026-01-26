@@ -7,11 +7,11 @@ node "Fly.io / Docker Swarm" {
     node "API Container" {
         component [Spring Boot API] as api
     }
-    
+
     node "Worker Pool (×100)" {
         component [Chrome Bot Workers] as workers
     }
-    
+
     node "Cache" {
         database [Redis] as redis
     }
@@ -21,7 +21,7 @@ cloud "External Services" {
     node "Supabase" {
         database [PostgreSQL] as db
     }
-    
+
     node "BrightData" {
         component [Residential Proxies\n10k+ IPs] as proxies
     }

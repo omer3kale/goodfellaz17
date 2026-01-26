@@ -1,7 +1,7 @@
 # GOODFELLAZ Implementation Guide
 ## MontiCore DSL + Spring Boot Serverless Arbitrage Model
 
-> **RWTH MATSE Research Project** - Software Engineering Lehrstuhl Standards  
+> **RWTH MATSE Research Project** - Software Engineering Lehrstuhl Standards
 > **Goal**: $0 Infrastructure → $10k/mo Revenue via Provider API Arbitrage
 
 ---
@@ -162,7 +162,7 @@ grammar SpotifyBotDSL extends de.monticore.literals.MCCommonLiterals {
   ServiceCatalog = "catalog" name:Name "{" Service* "}";
 
   /* Individual service definition */
-  Service = 
+  Service =
     "service" name:Name "{"
       "platform" ":" platform:Platform
       "type" ":" serviceType:ServiceType
@@ -294,21 +294,21 @@ After `mvn monticore:generate`:
 
 @Service
 public class ServiceCatalogService {
-    
+
     private final List<ServiceDefinition> services;
-    
+
     @PostConstruct
     public void loadCatalog() {
         // Parse DSL file
         SpotifyBotDSLParser parser = new SpotifyBotDSLParser();
         Optional<ASTServiceCatalog> ast = parser.parse("ServiceCatalog.bot");
-        
+
         // Convert to domain objects
         services = ast.get().getServiceList().stream()
             .map(this::toDomain)
             .toList();
     }
-    
+
     public ServicesResponse getServicesForPanel() {
         // Perfect Panel v2 format (auto-generated from DSL)
         return ServicesResponse.from(services);
@@ -370,21 +370,21 @@ Modify delivery to forward orders to user pool instead of local Chrome:
 // application/arbitrage/OrderForwarderService.java
 @Service
 public class OrderForwarderService {
-    
+
     private final UserProxyPoolService userPool;
     private final OrderRepositoryPort orderRepo;
-    
+
     /**
      * Forward order to available user for execution.
      * User receives 30% commission, we keep 70%.
      */
     public void forwardToUser(Order order) {
         UserProxy availableUser = userPool.nextHealthyUser(order.getGeoTarget());
-        
+
         if (availableUser != null) {
             // Send task to user via WebSocket
             userPool.sendTask(availableUser, order);
-            log.info("Order forwarded: orderId={}, userId={}", 
+            log.info("Order forwarded: orderId={}, userId={}",
                     order.getId(), availableUser.getUserId());
         } else {
             // Fallback: queue for retry
@@ -424,27 +424,27 @@ Create `presentation/user/UserDashboardController.java`:
 @RestController
 @RequestMapping("/user")
 public class UserDashboardController {
-    
+
     private final UserProxyPoolService userPool;
-    
+
     @PostMapping("/register")
     public UserRegistrationResponse register(@RequestBody UserRegistrationRequest req) {
         // Register user as delivery node
         return userPool.registerUser(req);
     }
-    
+
     @GetMapping("/earnings")
     public UserEarningsResponse getEarnings(@RequestParam String userId) {
         // Show commission earned
         return userPool.getEarnings(userId);
     }
-    
+
     @GetMapping("/tasks")
     public List<TaskResponse> getPendingTasks(@RequestParam String userId) {
         // Tasks assigned to this user
         return userPool.getPendingTasks(userId);
     }
-    
+
     @PostMapping("/task/complete")
     public void completeTask(@RequestBody TaskCompletionRequest req) {
         // User reports task completion
@@ -460,10 +460,10 @@ Create `application/arbitrage/UserProxyPoolService.java`:
 ```java
 @Service
 public class UserProxyPoolService {
-    
+
     private final Map<String, UserProxy> activeUsers = new ConcurrentHashMap<>();
     private final SimpMessagingTemplate websocket;
-    
+
     public void registerUser(UserRegistrationRequest req) {
         UserProxy user = UserProxy.builder()
             .userId(UUID.randomUUID().toString())
@@ -472,11 +472,11 @@ public class UserProxyPoolService {
             .lastSeen(Instant.now())
             .status(UserStatus.AVAILABLE)
             .build();
-        
+
         activeUsers.put(user.getUserId(), user);
         log.info("User registered: id={}, geo={}", user.getUserId(), user.getGeoTarget());
     }
-    
+
     public UserProxy nextHealthyUser(GeoTarget geo) {
         return activeUsers.values().stream()
             .filter(u -> u.getStatus() == UserStatus.AVAILABLE)
@@ -485,10 +485,10 @@ public class UserProxyPoolService {
             .findFirst()
             .orElse(null);
     }
-    
+
     public void sendTask(UserProxy user, Order order) {
         user.setStatus(UserStatus.BUSY);
-        
+
         TaskAssignment task = TaskAssignment.builder()
             .taskId(UUID.randomUUID())
             .orderId(order.getId())
@@ -496,15 +496,15 @@ public class UserProxyPoolService {
             .quantity(Math.min(100, order.getQuantity() - order.getDelivered()))
             .commission(calculateCommission(order))
             .build();
-        
+
         // Send via WebSocket to user's browser
         websocket.convertAndSendToUser(
-            user.getUserId(), 
-            "/queue/tasks", 
+            user.getUserId(),
+            "/queue/tasks",
             task
         );
     }
-    
+
     private BigDecimal calculateCommission(Order order) {
         // 30% commission to user
         BigDecimal orderValue = getServiceRate(order.getServiceId())
@@ -522,14 +522,14 @@ Create `infrastructure/config/WebSocketConfig.java`:
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
-    
+
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
         config.enableSimpleBroker("/queue");
         config.setApplicationDestinationPrefixes("/app");
         config.setUserDestinationPrefix("/user");
     }
-    
+
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws/user")
@@ -558,10 +558,10 @@ stompClient.onConnect = (frame) => {
 async function executeTask(task) {
     // Open Spotify in iframe or new tab
     const spotifyWindow = window.open(task.trackUrl, '_blank');
-    
+
     // Wait for play duration (35s minimum)
     await sleep(task.durationMs || 40000);
-    
+
     // Report completion
     await fetch('/user/task/complete', {
         method: 'POST',
@@ -571,7 +571,7 @@ async function executeTask(task) {
             actualDuration: 40
         })
     });
-    
+
     console.log(`Task completed! Earned: $${task.commission}`);
 }
 ```
@@ -827,7 +827,7 @@ Your RWTH paper can include:
 1. Introduction
    - SMM panel ecosystem analysis
    - StreamingMafia case study
-   
+
 2. Architecture
    - Hexagonal Architecture (Figure 1)
    - Domain-Driven Design (Figure 2)
@@ -892,6 +892,6 @@ git add . && git commit -m "feat: MontiCore DSL + User arbitrage model"
 
 ---
 
-*Document Version: 1.0*  
-*Last Updated: December 24, 2025*  
+*Document Version: 1.0*
+*Last Updated: December 24, 2025*
 *Author: RWTH MATSE Research Project*

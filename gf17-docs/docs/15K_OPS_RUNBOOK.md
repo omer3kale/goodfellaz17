@@ -1,7 +1,7 @@
 # 15K Order Delivery - Operations Runbook
 
-**Version:** 1.0.0  
-**Last Updated:** 2025-01-XX  
+**Version:** 1.0.0
+**Last Updated:** 2025-01-XX
 **On-Call Escalation:** #15k-delivery-alerts Slack channel
 
 ---
@@ -117,7 +117,7 @@ curl -s -H "X-Api-Key: $API_KEY" \
 # Check last errors
 psql $DATABASE_URL -c "
   SELECT id, last_error, attempts, executed_at
-  FROM order_tasks 
+  FROM order_tasks
   WHERE status = 'FAILED_PERMANENT'
   ORDER BY executed_at DESC
   LIMIT 20;
@@ -183,8 +183,8 @@ curl -s -H "X-Api-Key: $API_KEY" \
 
 # Check task distribution
 psql $DATABASE_URL -c "
-  SELECT status, COUNT(*), SUM(quantity) 
-  FROM order_tasks 
+  SELECT status, COUNT(*), SUM(quantity)
+  FROM order_tasks
   WHERE order_id = '{orderId}'
   GROUP BY status;
 "
@@ -199,9 +199,9 @@ psql $DATABASE_URL -c "
 ```bash
 # Force immediate retry (resets retry_after)
 psql $DATABASE_URL -c "
-  UPDATE order_tasks 
-  SET retry_after = NOW() 
-  WHERE order_id = '{orderId}' 
+  UPDATE order_tasks
+  SET retry_after = NOW()
+  WHERE order_id = '{orderId}'
     AND status = 'FAILED_RETRYING';
 "
 
@@ -244,7 +244,7 @@ psql $DATABASE_URL -c "
 
 # Check invariant log
 psql $DATABASE_URL -c "
-  SELECT * FROM invariant_check_log 
+  SELECT * FROM invariant_check_log
   WHERE order_id = '{orderId}'
   ORDER BY check_timestamp DESC;
 "
@@ -286,7 +286,7 @@ rate(delivery_plays_total{outcome="delivered"}[5m]) * 60
 
 **Failure Rate:**
 ```promql
-rate(delivery_tasks_total{status="failed_permanent"}[5m]) / 
+rate(delivery_tasks_total{status="failed_permanent"}[5m]) /
 rate(delivery_tasks_total[5m]) * 100
 ```
 
@@ -312,7 +312,7 @@ WHERE status = 'PROCESSING'
 ### 5.2 Task Distribution
 ```sql
 -- Tasks by status for all active orders
-SELECT 
+SELECT
   o.id as order_id,
   o.quantity as order_qty,
   COUNT(*) FILTER (WHERE t.status = 'PENDING') as pending,
@@ -329,7 +329,7 @@ GROUP BY o.id, o.quantity;
 ### 5.3 Recent Failures
 ```sql
 -- Last 20 permanent failures with errors
-SELECT 
+SELECT
   t.id,
   t.order_id,
   t.quantity,
@@ -376,16 +376,16 @@ WHERE status = 'FAILED_PERMANENT'
 **LAST RESORT - Only if customer agrees to partial delivery:**
 ```sql
 -- Calculate delivered from completed tasks
-UPDATE orders 
+UPDATE orders
 SET status = 'COMPLETED',
     delivered = (
-      SELECT COALESCE(SUM(quantity), 0) 
-      FROM order_tasks 
+      SELECT COALESCE(SUM(quantity), 0)
+      FROM order_tasks
       WHERE order_id = orders.id AND status = 'COMPLETED'
     ),
     failed_permanent_plays = (
-      SELECT COALESCE(SUM(quantity), 0) 
-      FROM order_tasks 
+      SELECT COALESCE(SUM(quantity), 0)
+      FROM order_tasks
       WHERE order_id = orders.id AND status = 'FAILED_PERMANENT'
     )
 WHERE id = '{orderId}';
@@ -410,4 +410,3 @@ WHERE id = '{orderId}';
 | Date | Author | Changes |
 |------|--------|---------|
 | 2025-01-XX | goodfellaz17 | Initial runbook |
-

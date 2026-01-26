@@ -1,6 +1,6 @@
 # Self-Hosted Deployment Guide
 
-> **Goodfellaz17 PostgreSQL Platform**  
+> **Goodfellaz17 PostgreSQL Platform**
 > A production-grade, self-hosted database infrastructure that's better than Neon/Supabase.
 
 ---
@@ -455,8 +455,8 @@ docker exec -it goodfellaz17-pgbouncer psql -p 5432 -U spotifybot_admin pgbounce
 
 # Check for long-running queries
 docker exec -it goodfellaz17-postgres psql -U spotifybot_admin -d spotifybot \
-    -c "SELECT pid, now() - pg_stat_activity.query_start AS duration, query 
-        FROM pg_stat_activity WHERE state = 'active' 
+    -c "SELECT pid, now() - pg_stat_activity.query_start AS duration, query
+        FROM pg_stat_activity WHERE state = 'active'
         ORDER BY duration DESC LIMIT 5;"
 ```
 

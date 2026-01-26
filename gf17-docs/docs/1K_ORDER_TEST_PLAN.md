@@ -62,7 +62,7 @@ curl -s -X POST http://localhost:8080/api/public/orders \
 
 **Expected DB State:**
 ```sql
-SELECT id, quantity, delivered, remains, status, total_cost 
+SELECT id, quantity, delivered, remains, status, total_cost
 FROM orders WHERE quantity = 1000 ORDER BY created_at DESC LIMIT 1;
 ```
 | id | quantity | delivered | remains | status | total_cost |
@@ -267,7 +267,7 @@ curl -s http://localhost:8080/api/public/capacity/summary | jq .
 ### Check Order + Transaction Atomicity
 ```sql
 -- Orders and transactions should match
-SELECT 
+SELECT
     o.id as order_id,
     o.quantity,
     o.total_cost,
@@ -283,18 +283,18 @@ LIMIT 5;
 
 ### Check No Duplicate Orders for Same Idempotency Key
 ```sql
-SELECT external_order_id, COUNT(*) 
-FROM orders 
-WHERE external_order_id IS NOT NULL 
-GROUP BY external_order_id 
+SELECT external_order_id, COUNT(*)
+FROM orders
+WHERE external_order_id IS NOT NULL
+GROUP BY external_order_id
 HAVING COUNT(*) > 1;
 -- Should return EMPTY (no duplicates)
 ```
 
 ### Check User Balance After Tests
 ```sql
-SELECT email, balance, api_key 
-FROM users 
+SELECT email, balance, api_key
+FROM users
 WHERE api_key = 'test-api-key-local-dev-12345';
 ```
 

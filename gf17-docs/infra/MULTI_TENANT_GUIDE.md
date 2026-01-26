@@ -1,6 +1,6 @@
 # Multi-Tenant Guide
 
-> **Adding and Managing Tenant Databases in Goodfellaz17**  
+> **Adding and Managing Tenant Databases in Goodfellaz17**
 > How to support multiple SMM panels (botzzz773, etc.) on shared infrastructure.
 
 ---
@@ -80,8 +80,8 @@ This script automatically:
 
 ```bash
 docker exec -i goodfellaz17-postgres psql -U spotifybot_admin -d postgres << 'EOF'
-CREATE DATABASE spotifybot_botzzz773 
-    WITH OWNER = spotifybot_admin 
+CREATE DATABASE spotifybot_botzzz773
+    WITH OWNER = spotifybot_admin
     ENCODING = 'UTF8';
 EOF
 ```
@@ -102,10 +102,10 @@ done
 docker exec -i goodfellaz17-postgres psql -U spotifybot_admin -d spotifybot_botzzz773 << 'EOF'
 GRANT USAGE ON SCHEMA public TO spotifybot_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO spotifybot_app;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public 
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
     GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO spotifybot_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO spotifybot_app;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public 
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
     GRANT USAGE, SELECT ON SEQUENCES TO spotifybot_app;
 EOF
 ```
@@ -169,7 +169,7 @@ INSERT INTO tenant_api_keys (
 );
 
 -- Display the generated key
-SELECT api_key FROM tenant_api_keys 
+SELECT api_key FROM tenant_api_keys
 WHERE tenant_id = (SELECT id FROM tenant_databases WHERE tenant_code = 'botzzz773');
 EOF
 ```
@@ -182,7 +182,7 @@ Create `src/main/resources/application-botzzz773.yml`:
 spring:
   config:
     import: classpath:application-local-selfhosted.yml
-    
+
   r2dbc:
     url: r2dbc:postgresql://localhost:6432/spotifybot_botzzz773
     username: spotifybot_app
@@ -244,7 +244,7 @@ goodfellaz17:
   multitenancy:
     enabled: true
     default-tenant: goodfellaz17
-    
+
     resolution:
       header-name: X-Tenant-ID
       api-key-enabled: true
@@ -282,7 +282,7 @@ PostgreSQL Instance
 // DatasourceRouter.java
 public Mono<Void> validateOrderBelongsToTenant(String orderId) {
     String tenantCode = TenantContext.getTenantCodeOrUnknown();
-    
+
     return getDatabaseClient()
         .sql("SELECT 1 FROM orders WHERE id = :orderId")
         .bind("orderId", orderId)
@@ -397,7 +397,7 @@ SELECT check_tenant_order_quota('botzzz773');  -- Returns TRUE/FALSE
 
 ```sql
 -- View current usage
-SELECT 
+SELECT
     tenant_code,
     database_size_mb,
     storage_quota_used_pct,
@@ -458,7 +458,7 @@ docker exec goodfellaz17-postgres pg_dump -U spotifybot_admin \
 ### Step 2: Mark as Archived
 
 ```sql
-UPDATE tenant_databases 
+UPDATE tenant_databases
 SET status = 'ARCHIVED', updated_at = CURRENT_TIMESTAMP
 WHERE tenant_code = 'botzzz773';
 ```
@@ -494,26 +494,26 @@ CREATE TABLE tenant_databases (
     database_name           VARCHAR(100) UNIQUE,    -- 'spotifybot'
     display_name            VARCHAR(255),           -- 'Goodfellaz17 Production'
     owner_email             VARCHAR(255),
-    
+
     -- Connection
     host                    VARCHAR(255) DEFAULT 'localhost',
     port                    INTEGER DEFAULT 5432,
     connection_pool_size    INTEGER DEFAULT 10,
-    
+
     -- Schema
     current_schema_version  VARCHAR(20) DEFAULT 'V1',
     target_schema_version   VARCHAR(20) DEFAULT 'V14',
-    
+
     -- Backup
     backup_enabled          BOOLEAN DEFAULT TRUE,
     backup_schedule         VARCHAR(50) DEFAULT '0 3 * * *',
     retention_days          INTEGER DEFAULT 30,
-    
+
     -- Quotas
     quota_storage_gb        INTEGER DEFAULT 10,
     quota_orders_per_day    INTEGER DEFAULT 10000,
     quota_connections_max   INTEGER DEFAULT 20,
-    
+
     -- Status
     status                  VARCHAR(50) DEFAULT 'ACTIVE'
 );

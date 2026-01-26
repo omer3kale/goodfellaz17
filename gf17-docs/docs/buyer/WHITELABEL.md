@@ -273,7 +273,7 @@ tenants:
     name: Brand A SMM
     theme: blue
   brand-b:
-    domain: brand-b.com  
+    domain: brand-b.com
     name: Brand B Panel
     theme: purple
 ```

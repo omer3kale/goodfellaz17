@@ -21,7 +21,7 @@ package "Order Aggregate" #LightBlue {
         +recordDelivery(plays): void
         +progressPercentage(): double
     }
-    
+
     class BotTask <<Entity>> {
         +id: UUID
         +orderId: UUID
@@ -37,7 +37,7 @@ package "Order Aggregate" #LightBlue {
         +recordPlay(): void
         +fail(error): void
     }
-    
+
     class DripSchedule <<Value Object>> {
         +totalDuration: Duration
         +maxHourlySpikePercent: double
@@ -48,7 +48,7 @@ package "Order Aggregate" #LightBlue {
         +validateSpikeThreshold(): void
         +calculateTaskCount(): int
     }
-    
+
     class SpotifyTrackId <<Value Object>> {
         +value: String
         --
@@ -56,14 +56,14 @@ package "Order Aggregate" #LightBlue {
         +toUri(): String
         +toUrl(): String
     }
-    
+
     class Quantity <<Value Object>> {
         +value: int
         --
         +add(amount): Quantity
         +subtract(amount): Quantity
     }
-    
+
     enum GeoTarget {
         USA
         EU
@@ -71,14 +71,14 @@ package "Order Aggregate" #LightBlue {
         GERMANY
         UK
     }
-    
+
     enum SpeedTier {
         SLOW
         NORMAL
         FAST
         VIP
     }
-    
+
     enum OrderStatus {
         PENDING
         PROCESSING

@@ -11,7 +11,7 @@ This document describes the MontiCore grammar-based domain model system for the 
 The domain model serves as the **single source of truth** for:
 
 1. **goodfellaz17** - Core delivery engine
-2. **botzzz773** - SMM panel frontend  
+2. **botzzz773** - SMM panel frontend
 3. **Market competitor site** - Black+neon green design
 
 ### Benefits
@@ -137,8 +137,8 @@ Mono<ProxySelection> selection = proxyRouter.route(request);
 selection.flatMap(proxy -> {
     // Use proxy for streaming
     return performStream(proxy.proxyUrl(), trackUrl)
-        .doOnSuccess(result -> 
-            proxyRouter.reportResult(proxy.proxyId(), 
+        .doOnSuccess(result ->
+            proxyRouter.reportResult(proxy.proxyId(),
                 ProxyResult.success(result.latencyMs(), result.bytes()))
         )
         .doOnError(e ->
@@ -174,7 +174,7 @@ Mono<OrderResponse> createOrder(CreateOrderRequest request, UUID userId) {
         .flatMap(service -> {
             // Calculate cost based on user tier
             BigDecimal cost = calculateCost(service, request.quantity(), userTier);
-            
+
             // Deduct balance
             return userRepository.updateBalance(userId, cost.negate())
                 .flatMap(user -> {
@@ -187,7 +187,7 @@ Mono<OrderResponse> createOrder(CreateOrderRequest request, UUID userId) {
                         .geoProfile(request.geoProfile())
                         .cost(cost)
                         .build();
-                    
+
                     return orderRepository.save(order);
                 })
                 .flatMap(order -> {
@@ -199,7 +199,7 @@ Mono<OrderResponse> createOrder(CreateOrderRequest request, UUID userId) {
                         .type(TransactionType.DEBIT.name())
                         .reason("Order #" + order.getId())
                         .build();
-                    
+
                     return transactionRepository.save(tx)
                         .thenReturn(OrderResponse.fromEntity(order, service.getName()));
                 });
@@ -224,10 +224,10 @@ public Mono<Boolean> canFulfillPackage(int quantity, String geoProfile, int maxD
                 .filter(PoolHealthStatus::isHealthy)
                 .mapToInt(p -> p.totalCapacity() - p.currentLoad())
                 .sum();
-            
+
             // Estimate delivery rate (requests per day)
             int requestsPerDay = healthyCapacity * 24 * 60; // 1 req/min per slot
-            
+
             // Can we deliver quantity in maxDays?
             return requestsPerDay * maxDays >= quantity;
         });
@@ -305,13 +305,13 @@ Example adding fraud detection:
 entity FraudSignal {
     @Generated(UUID)
     id: UUID @NotNull;
-    
+
     orderId: UUID @NotNull @Indexed;
     signalType: String @NotNull; // IP_MISMATCH, VELOCITY, BOT_PATTERN
     confidence: Double @NotNull @Range(min = 0.0, max = 1.0);
     details: String @Nullable @Length(max = 2000);
     detectedAt: Instant @NotNull @Default(Instant.now());
-    
+
     @Index(name = "idx_fraud_signals_order", columns = [orderId])
 }
 ```

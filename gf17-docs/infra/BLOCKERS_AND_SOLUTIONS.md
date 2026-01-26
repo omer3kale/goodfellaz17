@@ -1,6 +1,6 @@
 # Blockers and Solutions
 
-> **Production Readiness Analysis for Goodfellaz17 PostgreSQL Platform**  
+> **Production Readiness Analysis for Goodfellaz17 PostgreSQL Platform**
 > What will break at scale, and how we prevent it.
 
 ---
@@ -119,9 +119,9 @@ userRepository.findById(goodfellaz17_user_id);  // LEAK!
 ```java
 // TenantContext.java - Thread-safe tenant storage
 public final class TenantContext {
-    private static final InheritableThreadLocal<TenantInfo> CURRENT_TENANT = 
+    private static final InheritableThreadLocal<TenantInfo> CURRENT_TENANT =
         new InheritableThreadLocal<>();
-    
+
     public static TenantInfo require() {
         TenantInfo tenant = CURRENT_TENANT.get();
         if (tenant == null) {
@@ -138,7 +138,7 @@ public final class TenantContext {
 // DatasourceRouter.java - Enforces tenant isolation
 public Mono<Void> validateOrderBelongsToTenant(String orderId) {
     String tenantCode = TenantContext.getTenantCodeOrUnknown();
-    
+
     return getDatabaseClient()
         .sql("SELECT 1 FROM orders WHERE id = :orderId")
         .bind("orderId", orderId)
@@ -197,7 +197,7 @@ Timeline:
 ```sql
 -- V12__Multi_Tenant_Catalog.sql includes schema tracking
 SELECT tenant_code, current_schema_version, target_schema_version,
-       CASE WHEN current_schema_version != target_schema_version 
+       CASE WHEN current_schema_version != target_schema_version
             THEN 'NEEDS_MIGRATION' ELSE 'SYNCED' END AS schema_status
 FROM tenant_databases;
 
@@ -217,7 +217,7 @@ public void validateSchemaVersions() {
         .filter(t -> !t.currentVersion().equals(t.targetVersion()))
         .collectList()
         .block();
-    
+
     if (!outdated.isEmpty()) {
         log.error("SCHEMA_DRIFT_DETECTED | tenants={}", outdated);
         throw new SchemaVersionMismatchException(
@@ -283,20 +283,20 @@ FROM pg_stat_replication;
 // ReplicationLagHealthIndicator.java (Phase 3)
 @Component("replication")
 public class ReplicationLagHealthIndicator implements HealthIndicator {
-    
+
     @Scheduled(fixedDelay = 10000)
     public void checkReplicationLag() {
         long lagMs = measureReplicationLag();
-        
+
         if (lagMs > 5000) {
             log.warn("REPLICATION_LAG_HIGH | lag_ms={}", lagMs);
         }
     }
-    
+
     @Override
     public Health health() {
         long lagMs = lastMeasuredLag.get();
-        
+
         if (lagMs > 10000) return Health.down()
             .withDetail("replication_lag_ms", lagMs)
             .build();
@@ -363,7 +363,7 @@ pg_dump --jobs=4 --format=directory --file=/backups/spotifybot_$(date +%Y%m%d)
 check_load() {
     load=$(docker exec goodfellaz17-postgres psql -U spotifybot_admin -d spotifybot -tAc \
         "SELECT count(*) FROM pg_stat_activity WHERE state = 'active';")
-    
+
     if [[ $load -gt 50 ]]; then
         echo "High load ($load active connections), skipping backup"
         exit 0

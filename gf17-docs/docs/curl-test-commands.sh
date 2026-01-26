@@ -1,7 +1,7 @@
 # =============================================================================
 # GoodfellaZ17 API - Manual Testing with curl
 # =============================================================================
-# 
+#
 # Prerequisites:
 # 1. Start the application: mvn spring-boot:run
 # 2. Database is seeded with test data

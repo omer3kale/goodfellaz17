@@ -208,11 +208,11 @@ while true; do
   echo "=== Worker Status $(date) ==="
   curl -s "http://localhost:8080/api/admin/worker/status" \
     -H "X-API-Key: test-api-key-local-dev-12345" | jq
-  
+
   echo "\n=== Order Progress ==="
   curl -s "http://localhost:8080/api/admin/orders/${ORDER_ID}/progress" \
     -H "X-API-Key: test-api-key-local-dev-12345" | jq '.progressPercent, .completedTasks, .totalTasks, .status'
-  
+
   sleep 5
 done
 ```

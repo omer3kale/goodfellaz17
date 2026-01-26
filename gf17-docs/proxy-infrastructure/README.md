@@ -2,8 +2,8 @@
 
 ## Overview
 
-This module contains the self-hosted proxy layer for GoodFellaz17. 
-Proxies run as separate processes (local or containerized) and register 
+This module contains the self-hosted proxy layer for GoodFellaz17.
+Proxies run as separate processes (local or containerized) and register
 with the main PostgreSQL database.
 
 ## Architecture

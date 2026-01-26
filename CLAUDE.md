@@ -200,9 +200,40 @@ Modify existing chaos test to:
 - **No mock data** in tests (realistic payloads always)
 - **One test at a time** (propose, not bulk changes)
 - **Invariants first** (state them before proposing changes)
-- **Minimal markdown** (keep only CLAUDE.md, details in code/git)
+- **Minimal markdown at root** (only README.md and CLAUDE.md)
 - **Clean git history** (descriptive commits, no WIP)
 
 ---
 
-**Last Updated:** 2026-01-26 23:30 UTC
+## Documentation Structure
+
+All markdown files organized in `gf17-docs/`:
+
+```
+gf17-docs/
+├── ADAPTER_LAYER_COMPLETE.md         (session summary)
+├── SAFETY_MODULE_DEPLOYMENT.md       (deployment guide)
+├── SAFETY_QUICK_START.md             (quick start)
+├── THESIS_EVIDENCE.md                (thesis context)
+├── docs/                              (architecture & guides)
+│   ├── architecture/                 (C4 diagrams, sequence flows)
+│   ├── buyer/                        (API docs, whitelabel)
+│   ├── thesis/                       (chapter content)
+│   └── *.md                          (implementation guides)
+├── infra/                            (deployment & infrastructure)
+│   ├── BACKUP_STRATEGY.md
+│   ├── DB_CONNECTION_PLAYBOOK.md
+│   ├── SELFHOSTED_DEPLOYMENT.md
+│   └── *.md                          (security, roles, runbooks)
+└── proxy-infrastructure/              (proxy service docs)
+    └── README.md
+```
+
+**IDE Benefits:**
+- Root clean (only `README.md`, `CLAUDE.md`, code)
+- All docs organized and discoverable
+- No IDE noise from scattered markdown files
+
+---
+
+**Last Updated:** 2026-01-26 23:35 UTC

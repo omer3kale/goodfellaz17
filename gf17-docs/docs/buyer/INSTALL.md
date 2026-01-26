@@ -131,7 +131,7 @@ cat > /etc/nginx/sites-available/smm << 'EOF'
 server {
     listen 80;
     server_name your-domain.com;
-    
+
     location / {
         proxy_pass http://localhost:8080;
         proxy_set_header Host $host;

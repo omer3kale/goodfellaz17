@@ -1,7 +1,7 @@
 # 🎨 GOODFELLAZ17 PWA Frontend Implementation Plan
 
-**Status:** REVIEW DOCUMENT - No implementation yet  
-**Version:** 1.0  
+**Status:** REVIEW DOCUMENT - No implementation yet
+**Version:** 1.0
 **Date:** December 25, 2025
 
 ---
@@ -306,20 +306,20 @@ const STATIC_ASSETS = [
   /* Primary - Beşiktaş Black */
   --color-primary: #000000;
   --color-primary-light: #1a1a1a;
-  
+
   /* Accent - Beşiktaş White */
   --color-accent: #ffffff;
   --color-accent-muted: #e0e0e0;
-  
+
   /* Highlight - Blood Red */
   --color-highlight: #c70000;
   --color-highlight-hover: #ff0000;
-  
+
   /* Status Colors */
   --color-success: #00c853;
   --color-warning: #ffc107;
   --color-elite: #ffd700;
-  
+
   /* Backgrounds */
   --bg-dark: #0d0d0d;
   --bg-card: #1a1a1a;
