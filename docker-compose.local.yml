@@ -5,18 +5,19 @@ version: '3.8'
 
 services:
   postgres:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     container_name: goodfellaz17-postgres
     environment:
       POSTGRES_DB: goodfellaz17
       POSTGRES_USER: goodfellaz17
-      POSTGRES_PASSWORD: localdev123
+      POSTGRES_PASSWORD: Mariogomez33Strong
+      POSTGRES_HOST_AUTH_METHOD: trust
     ports:
-      - "5432:5432"
+      - "55432:5432"  # Non-standard host port to avoid macOS Homebrew Postgres collision
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      # Auto-run migrations on startup
-      - ./src/main/resources/db/migration:/docker-entrypoint-initdb.d:ro
+      # Use combined init.sql to avoid alphabetical ordering issues
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U goodfellaz17"]
       interval: 5s

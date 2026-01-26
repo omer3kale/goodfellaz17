@@ -1,0 +1,22 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:55432/goodfellaz17
+    username: goodfellaz17
+    password: Mariogomez33Strong
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+app:
+  proxy:
+    node-id: "hp-omen-node-2"
+    host: "HP_OMEN_IP_OR_HOSTNAME"
+    port: 9092
+
+logging:
+  level:
+    com.goodfellaz17.proxy: DEBUG

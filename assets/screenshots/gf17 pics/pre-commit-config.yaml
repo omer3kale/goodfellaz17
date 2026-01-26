@@ -1,0 +1,103 @@
+# .pre-commit-config.yaml - Automated Security Gates
+
+# Install: pip install pre-commit
+# Setup: pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # SAST: Static Application Security Testing (OWASP Top 10)
+  - repo: https://github.com/returntocorp/semgrep
+    rev: v1.45.0
+    hooks:
+      - id: semgrep
+        name: semgrep (security scanning)
+        args: ['--config=p/owasp-top-ten', '--json', '--output=semgrep-report.json']
+        types: [java]
+        stages: [commit]
+
+  # Secrets scanning
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.0
+    hooks:
+      - id: gitleaks
+        name: gitleaks (secrets detection)
+        entry: gitleaks detect --verbose --exit-code 1 --no-git
+        language: system
+        pass_filenames: false
+        stages: [commit]
+
+  # Java code quality
+  - repo: local
+    hooks:
+      - id: maven-compile
+        name: maven-compile-check
+        entry: bash -c 'mvn clean compile -q'
+        language: system
+        pass_filenames: false
+        types: [java]
+        stages: [commit]
+
+      - id: maven-test
+        name: maven-test-check
+        entry: bash -c 'mvn test -q -Dorg.slf4j.simpleLogger.defaultLogLevel=error'
+        language: system
+        pass_filenames: false
+        types: [java]
+        stages: [commit]
+
+      - id: checkstyle-verify
+        name: checkstyle-verify
+        entry: bash -c 'mvn checkstyle:check -q'
+        language: system
+        pass_filenames: false
+        types: [java]
+        stages: [commit]
+
+  # Secrets in code (additional layer)
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        name: detect-secrets
+        args: ['scan', '--baseline', '.secrets.baseline']
+        types: [text, java]
+        stages: [commit]
+
+  # YAML validation
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.32.0
+    hooks:
+      - id: yamllint
+        name: yamllint
+        args: [--strict]
+        types: [yaml]
+        stages: [commit]
+
+  # General code quality
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: detect-private-key
+
+---
+
+# Additional scanners (run separately before commit)
+
+# SQL injection detection (if stored procs added)
+# sqlcheck --list-all | grep -i injection
+
+# Dependency vulnerabilities
+# mvn org.owasp:dependency-check-maven:check
+
+# Type checking (Java is compiled, but for future TypeScript)
+# mypy src/ --strict
+
+# Linting standards
+# ruff check src/

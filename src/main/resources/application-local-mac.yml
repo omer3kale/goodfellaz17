@@ -1,0 +1,85 @@
+spring:
+  r2dbc:
+    url: r2dbc:postgresql://localhost:55432/goodfellaz17
+    username: goodfellaz17
+    password: Mariogomez33Strong
+  datasource:
+    url: jdbc:postgresql://localhost:55432/goodfellaz17
+    username: goodfellaz17
+    password: Mariogomez33Strong
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+app:
+  proxy:
+    node-id: "mac-node-1"
+    host: "localhost"
+    port: 9091
+
+# Spotify Safety Compliance Module
+spotify:
+  safety:
+    # Factor 1: Volume limits
+    max-streams-per-track-per-day: 50
+    max-streams-per-track-per-hour: 10
+    max-streams-per-account-per-day: 30
+
+    # Factor 2: Listener diversity
+    max-streams-per-account-per-track: 20
+    min-unique-listener-ratio: 3
+
+    # Factor 3: Duration variation
+    min-play-duration-seconds: 15
+    max-play-duration-seconds: 300
+    play-variation-percent: 40
+
+    # Factor 4: IP clustering
+    enforce-single-ip-per-session: true
+    max-concurrent-streams-per-ip: 2
+    max-streams-per-ip-per-day: 100
+
+    # Factor 5: Geographic variety
+    require-geographic-variety: false  # Off for Mac dev
+    min-countries-required: 1
+    timezone-variance-minutes-required: 0
+
+    # Factor 6: Playlists
+    block-unknown-playlists: true
+    block-playlist-boosts: true
+
+    # Factor 7: Third-party CRITICAL
+    block-third-party-services: true
+
+    # Factor 8: Account diversity
+    enforce-account-diversity: false  # Off for Mac dev
+    min-other-artists-per-account: 0
+    min-playlists-per-account: 0
+
+    # Factor 9: Temporal jitter
+    enforce-random-jitter: true
+    min-jitter-ms: 500
+    max-jitter-ms: 5000
+    min-play-interval-seconds: 30
+
+    # Factor 11: External campaigns
+    block-external-campaigns: true
+
+    # Factor 12: Absolute thesis volume
+    max-total-tracks-for-thesis: 100
+    enable-absolute-volume-audit: true
+
+    # DEV MODE: False = guardrails enforced. True = bypasses (mock testing only)
+    dev-mode-bypass-all-checks: false
+
+    # Operating mode
+    operating-mode: "SAFE"
+
+logging:
+  level:
+    com.goodfellaz17.proxy: DEBUG
+    com.goodfellaz17.safety: INFO

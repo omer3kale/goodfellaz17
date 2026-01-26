@@ -13,3 +13,20 @@ Endpoints:
   GET  /stats   → Cumulative statistics
 
 Starting...
+[28099be6] Listening on port 9090
+[28099be6] Failure rate: 10.0%
+[28099be6] Delay: 50ms
+[28099be6] Health: http://localhost:9090/health
+[28099be6] Stats:  http://localhost:9090/stats
+Traceback (most recent call last):
+  File "<stdin>", line 159, in <module>
+  File "/opt/homebrew/Cellar/python@3.13/3.13.7/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socketserver.py", line 457, in __init__
+    self.server_bind()
+    ~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.7/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/server.py", line 136, in server_bind
+    socketserver.TCPServer.server_bind(self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.7/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socketserver.py", line 478, in server_bind
+    self.socket.bind(self.server_address)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 48] Address already in use

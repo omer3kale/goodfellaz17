@@ -49,12 +49,12 @@ API_BASE="http://localhost:8080"
 API_KEY="test-api-key-local-dev-12345"
 PROXY_URL="http://localhost:9090"
 
-# Database (assumes local docker-compose setup)
-DB_HOST="${DB_HOST:-localhost}"
-DB_PORT="${DB_PORT:-5432}"
+# Database (uses docker exec for reliable connectivity)
+DB_CONTAINER="${DB_CONTAINER:-goodfellaz17-postgres}"
 DB_NAME="${DB_NAME:-goodfellaz17}"
-DB_USER="${DB_USER:-postgres}"
-DB_PASS="${DB_PASS:-postgres}"
+DB_USER="${DB_USER:-goodfellaz17}"
+# Docker socket for Colima
+export DOCKER_HOST="${DOCKER_HOST:-unix://${HOME}/.colima/default/docker.sock}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -84,27 +84,34 @@ log_error() {
 }
 
 run_sql() {
-    PGPASSWORD="$DB_PASS" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -A -c "$1" 2>/dev/null
+    docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "$1" 2>/dev/null
 }
 
 check_dependencies() {
     log_info "Checking dependencies..."
-    
+
     if ! command -v jq &> /dev/null; then
         log_error "jq not found. Install with: brew install jq"
         exit 1
     fi
-    
-    if ! command -v psql &> /dev/null; then
-        log_error "psql not found. Install with: brew install postgresql"
+
+    if ! command -v docker &> /dev/null; then
+        log_error "docker not found"
         exit 1
     fi
-    
+
+    # Verify Docker container is running
+    if ! docker ps --format '{{.Names}}' | grep -q "^${DB_CONTAINER}$"; then
+        log_error "Database container '$DB_CONTAINER' not running"
+        log_info "Tip: Run 'docker-compose -f docker-compose.local.yml up -d' first"
+        exit 1
+    fi
+
     if ! command -v curl &> /dev/null; then
         log_error "curl not found"
         exit 1
     fi
-    
+
     log_success "All dependencies available"
 }
 
@@ -114,17 +121,17 @@ check_dependencies() {
 
 setup_proxy() {
     log_info "Setting up proxy with ${FAILURE_RATE}x100% failure rate..."
-    
+
     # Kill existing proxy
     pkill -f "proxy-node.sh" 2>/dev/null || true
     pkill -f "python3.*9090" 2>/dev/null || true
     sleep 2
-    
+
     # Start new proxy
     cd "$PROXY_DIR"
     nohup ./proxy-node.sh 9090 --failure-rate="$FAILURE_RATE" --delay-ms="$DELAY_MS" > proxy.out 2>&1 &
     sleep 3
-    
+
     # Verify proxy is running
     HEALTH=$(curl -s "$PROXY_URL/health" 2>/dev/null || echo '{}')
     if echo "$HEALTH" | jq -e '.status == "ONLINE"' > /dev/null 2>&1; then
@@ -133,13 +140,13 @@ setup_proxy() {
         log_error "Failed to start proxy"
         exit 1
     fi
-    
+
     cd "$SCRIPT_DIR"
 }
 
 verify_api() {
     log_info "Verifying API is accessible..."
-    
+
     HEALTH=$(curl -s "$API_BASE/actuator/health" 2>/dev/null || echo '{}')
     if echo "$HEALTH" | jq -e '.status == "UP"' > /dev/null 2>&1; then
         log_success "API is healthy"
@@ -149,14 +156,14 @@ verify_api() {
 }
 
 verify_database() {
-    log_info "Verifying database connection..."
-    
+    log_info "Verifying database connection via Docker..."
+
     RESULT=$(run_sql "SELECT 1" 2>/dev/null || echo "")
     if [ "$RESULT" == "1" ]; then
-        log_success "Database connected"
+        log_success "Database connected via docker exec"
     else
         log_error "Database connection failed"
-        log_info "Tip: Run 'docker-compose up -d postgres' first"
+        log_info "Tip: Run 'docker-compose -f docker-compose.local.yml up -d' first"
         exit 1
     fi
 }
@@ -167,14 +174,14 @@ verify_database() {
 
 create_test_order() {
     log_info "Creating test order with $PLAYS plays..."
-    
+
     # Get a service ID (spotify_plays)
     SERVICE_ID=$(run_sql "SELECT id FROM services WHERE type='spotify_plays' LIMIT 1")
     if [ -z "$SERVICE_ID" ]; then
         log_warn "No spotify_plays service found, using default"
         SERVICE_ID="3c1cb593-85a7-4375-8092-d39c00399a7b"
     fi
-    
+
     # Create order via API
     RESPONSE=$(curl -s -X POST "$API_BASE/api/v2/orders" \
         -H "Content-Type: application/json" \
@@ -184,17 +191,17 @@ create_test_order() {
             \"link\": \"https://open.spotify.com/track/thesis-chaos-test-$TIMESTAMP\",
             \"quantity\": $PLAYS
         }" 2>/dev/null || echo '{"error": "API call failed"}')
-    
+
     # Extract order ID
     ORDER_ID=$(echo "$RESPONSE" | jq -r '.id // .orderId // empty' 2>/dev/null)
-    
+
     if [ -z "$ORDER_ID" ] || [ "$ORDER_ID" == "null" ]; then
         log_warn "API order creation failed, creating directly in database..."
-        
+
         # Create order directly in database (fallback)
         ORDER_ID=$(run_sql "
             INSERT INTO orders (id, user_id, service_id, link, quantity, status, delivered, remains, created_at)
-            SELECT 
+            SELECT
                 gen_random_uuid(),
                 (SELECT id FROM users LIMIT 1),
                 '$SERVICE_ID'::uuid,
@@ -206,15 +213,15 @@ create_test_order() {
                 NOW()
             RETURNING id::text
         ")
-        
+
         if [ -z "$ORDER_ID" ]; then
             log_error "Failed to create order"
             exit 1
         fi
-        
+
         log_info "Order created directly in DB (API fallback)"
     fi
-    
+
     log_success "Order created: $ORDER_ID"
     echo "$ORDER_ID"
 }
@@ -227,33 +234,33 @@ wait_for_completion() {
     local ORDER_ID="$1"
     local START_TIME=$(date +%s)
     local POLL_INTERVAL=5
-    
+
     log_info "Waiting for order completion (timeout: ${TIMEOUT_SECONDS}s)..."
-    
+
     while true; do
         CURRENT_TIME=$(date +%s)
         ELAPSED=$((CURRENT_TIME - START_TIME))
-        
+
         if [ $ELAPSED -ge $TIMEOUT_SECONDS ]; then
             log_warn "Timeout reached after ${TIMEOUT_SECONDS}s"
             break
         fi
-        
+
         # Get order status
         STATUS=$(run_sql "SELECT status FROM orders WHERE id='$ORDER_ID'")
         DELIVERED=$(run_sql "SELECT COALESCE(delivered, 0) FROM orders WHERE id='$ORDER_ID'")
         REMAINS=$(run_sql "SELECT COALESCE(remains, 0) FROM orders WHERE id='$ORDER_ID'")
-        
+
         echo -e "  [${ELAPSED}s] Status: $STATUS | Delivered: $DELIVERED | Remains: $REMAINS"
-        
+
         if [ "$STATUS" == "COMPLETED" ]; then
             log_success "Order completed in ${ELAPSED}s"
             return 0
         fi
-        
+
         sleep $POLL_INTERVAL
     done
-    
+
     return 1
 }
 
@@ -263,12 +270,12 @@ wait_for_completion() {
 
 collect_evidence() {
     local ORDER_ID="$1"
-    
+
     log_info "Collecting evidence from three sources..."
-    
+
     # Source 1: Proxy Stats
     PROXY_STATS=$(curl -s "$PROXY_URL/stats" 2>/dev/null || echo '{}')
-    
+
     # Source 2: Task Statistics
     TASK_STATS=$(run_sql "
         SELECT json_build_object(
@@ -283,7 +290,7 @@ collect_evidence() {
         FROM order_tasks
         WHERE order_id = '$ORDER_ID'
     ")
-    
+
     # Source 3: Order Statistics
     ORDER_STATS=$(run_sql "
         SELECT json_build_object(
@@ -297,7 +304,7 @@ collect_evidence() {
         FROM orders
         WHERE id = '$ORDER_ID'
     ")
-    
+
     # Return as JSON object
     echo "{
         \"proxy\": $PROXY_STATS,
@@ -312,15 +319,15 @@ collect_evidence() {
 
 validate_invariants() {
     local EVIDENCE="$1"
-    
+
     log_info "Validating invariants..."
-    
+
     # Extract values
     QUANTITY=$(echo "$EVIDENCE" | jq '.order.quantity')
     DELIVERED=$(echo "$EVIDENCE" | jq '.order.delivered')
     REMAINS=$(echo "$EVIDENCE" | jq '.order.remains')
     FAILED_PERM=$(echo "$EVIDENCE" | jq '.order.failed_permanent_plays')
-    
+
     # INV-1: Conservation (delivered + remains + failed_permanent = quantity)
     CONSERVATION_SUM=$((DELIVERED + REMAINS + FAILED_PERM))
     if [ "$CONSERVATION_SUM" -eq "$QUANTITY" ]; then
@@ -330,7 +337,7 @@ validate_invariants() {
         log_error "INV-1 (Conservation): $DELIVERED + $REMAINS + $FAILED_PERM ≠ $QUANTITY"
         INV1_PASS="✗"
     fi
-    
+
     # INV-6: Eventual Completion (if remains=0, status should be COMPLETED)
     STATUS=$(echo "$EVIDENCE" | jq -r '.order.status')
     if [ "$REMAINS" -eq 0 ] && [ "$STATUS" == "COMPLETED" ]; then
@@ -343,7 +350,7 @@ validate_invariants() {
         log_error "INV-6 (Completion): remains=0 but status=$STATUS"
         INV6_PASS="✗"
     fi
-    
+
     echo "{\"inv1\": \"$INV1_PASS\", \"inv6\": \"$INV6_PASS\"}"
 }
 
@@ -355,43 +362,43 @@ generate_report() {
     local ORDER_ID="$1"
     local EVIDENCE="$2"
     local VALIDATION="$3"
-    
+
     log_info "Generating thesis evidence report..."
-    
+
     mkdir -p "$OUTPUT_DIR"
-    
+
     # Extract all values
     QUANTITY=$(echo "$EVIDENCE" | jq '.order.quantity')
     DELIVERED=$(echo "$EVIDENCE" | jq '.order.delivered')
     REMAINS=$(echo "$EVIDENCE" | jq '.order.remains')
     FAILED_PERM=$(echo "$EVIDENCE" | jq '.order.failed_permanent_plays')
     STATUS=$(echo "$EVIDENCE" | jq -r '.order.status')
-    
+
     PROXY_REQUESTS=$(echo "$EVIDENCE" | jq '.proxy.totalRequests // 0')
     PROXY_SUCCESS=$(echo "$EVIDENCE" | jq '.proxy.successes // 0')
     PROXY_FAILURES=$(echo "$EVIDENCE" | jq '.proxy.failures // 0')
-    
+
     TASK_COUNT=$(echo "$EVIDENCE" | jq '.tasks.total_tasks // 0')
     TASK_COMPLETED=$(echo "$EVIDENCE" | jq '.tasks.completed // 0')
     TASK_RETRYING=$(echo "$EVIDENCE" | jq '.tasks.failed_retrying // 0')
     TASK_PERMANENT=$(echo "$EVIDENCE" | jq '.tasks.failed_permanent // 0')
     TOTAL_ATTEMPTS=$(echo "$EVIDENCE" | jq '.tasks.total_attempts // 0')
-    
+
     INV1=$(echo "$VALIDATION" | jq -r '.inv1')
     INV6=$(echo "$VALIDATION" | jq -r '.inv6')
-    
+
     # Calculate retry rate
     if [ "$TASK_COUNT" -gt 0 ]; then
         RETRY_COUNT=$((TOTAL_ATTEMPTS - TASK_COUNT))
     else
         RETRY_COUNT=0
     fi
-    
+
     cat > "$OUTPUT_FILE" << EOF
 # Chaos Experiment Evidence
 
-**Generated:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")  
-**Order ID:** \`$ORDER_ID\`  
+**Generated:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+**Order ID:** \`$ORDER_ID\`
 **Experiment Parameters:**
 - Plays Requested: $PLAYS
 - Failure Rate: ${FAILURE_RATE}x100%
@@ -480,28 +487,28 @@ main() {
     echo " Timeout:      ${TIMEOUT_SECONDS}s"
     echo "=============================================="
     echo ""
-    
+
     check_dependencies
     verify_database
     setup_proxy
     verify_api
-    
+
     echo ""
     ORDER_ID=$(create_test_order)
-    
+
     echo ""
     wait_for_completion "$ORDER_ID"
     COMPLETION_STATUS=$?
-    
+
     echo ""
     EVIDENCE=$(collect_evidence "$ORDER_ID")
-    
+
     echo ""
     VALIDATION=$(validate_invariants "$EVIDENCE")
-    
+
     echo ""
     generate_report "$ORDER_ID" "$EVIDENCE" "$VALIDATION"
-    
+
     echo ""
     echo "=============================================="
     echo " EXPERIMENT COMPLETE"
@@ -509,7 +516,7 @@ main() {
     echo " Order:  $ORDER_ID"
     echo " Report: $OUTPUT_FILE"
     echo "=============================================="
-    
+
     # Show quick summary
     echo ""
     echo "Quick Summary:"
