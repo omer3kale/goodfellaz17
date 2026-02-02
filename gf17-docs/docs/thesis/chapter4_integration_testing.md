@@ -126,6 +126,7 @@ This pattern polls the database every 2 seconds, up to a 3-minute timeout, until
 
 *Figure 4.2: Integration Test Harness Architecture. Docker containers for PostgreSQL 16 and Redis 7 are orchestrated by Testcontainers. The Spring Boot application context connects to these ephemeral containers via dynamically-assigned ports. Test assertions verify HTTP responses, database state, and invariant compliance.*
 └──────────────────────────────────────────────────────────────────┘
+
 ```
 *Figure 4.2: Integration Test Harness Architecture*
 

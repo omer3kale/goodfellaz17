@@ -2,7 +2,7 @@ package com.goodfellaz17.order.controller;
 
 import com.goodfellaz17.order.domain.Order;
 import com.goodfellaz17.order.domain.OrderTask;
-import com.goodfellaz17.order.metrics.DeliveryMetrics;
+import com.goodfellaz17.order.metrics.OrderMetrics;
 import com.goodfellaz17.order.repository.PlayOrderTaskRepository;
 import com.goodfellaz17.order.service.OrderServiceFacade;
 import com.goodfellaz17.order.service.TaskExecutionService;
@@ -103,10 +103,10 @@ public class OrderController {
     /**
      * GET /api/orders/metrics
      * Get pipeline health metrics.
-     * Returns Mono<ResponseEntity<DeliveryMetrics>> - fully async.
+     * Returns Mono<ResponseEntity<OrderMetrics>> - fully async.
      */
     @GetMapping("/metrics")
-    public Mono<ResponseEntity<DeliveryMetrics>> getMetrics() {
+    public Mono<ResponseEntity<OrderMetrics>> getMetrics() {
         return facade.getMetricsWithAudit()
             .map(ResponseEntity::ok)
             .onErrorResume(e -> Mono.just(

@@ -108,6 +108,7 @@ curl http://localhost:8080/api/admin/capacity \
 ```
 
 Expected output:
+
 ```json
 {
   "playsPerHour": 20000,
@@ -139,6 +140,7 @@ curl -X POST http://localhost:8080/api/v1/orders \
 ```
 
 Expected response:
+
 ```json
 {
   "orderId": "uuid-here",
@@ -168,6 +170,7 @@ curl "http://localhost:8080/api/admin/orders/${ORDER_ID}/tasks" \
 ```
 
 Expected:
+
 ```json
 {
   "orderId": "uuid",
@@ -238,6 +241,7 @@ curl "http://localhost:8080/api/admin/orders/${ORDER_ID}/progress" \
 ```
 
 Expected final state:
+
 ```json
 {
   "orderId": "uuid",
@@ -263,6 +267,7 @@ Expected final state:
 To test retry logic, you can:
 
 1. **Delete proxies mid-order**:
+
 ```bash
 # Get proxy IDs and delete some
 curl http://localhost:8080/api/internal/proxies \
@@ -274,6 +279,7 @@ curl -X DELETE "http://localhost:8080/api/internal/proxies/${PROXY_ID}" \
 ```
 
 2. **Set proxy to unhealthy**:
+
 ```bash
 curl -X POST "http://localhost:8080/api/internal/proxies/${PROXY_ID}/health" \
   -H "X-API-Key: test-api-key-local-dev-12345" \
@@ -311,6 +317,7 @@ curl "http://localhost:8080/api/admin/dead-letter-queue?limit=50" \
 ```
 
 Expected:
+
 ```json
 {
   "orderId": "uuid",
@@ -397,12 +404,14 @@ Expected:
 ### Worker Not Processing
 
 Check if worker is enabled:
+
 ```bash
 curl http://localhost:8080/api/admin/worker/status \
   -H "X-API-Key: test-api-key-local-dev-12345" | jq '.isRunning'
 ```
 
 Check for pending tasks:
+
 ```bash
 curl http://localhost:8080/api/admin/worker/status \
   -H "X-API-Key: test-api-key-local-dev-12345" | jq '.pendingTasks'
@@ -411,6 +420,7 @@ curl http://localhost:8080/api/admin/worker/status \
 ### Tasks Stuck in EXECUTING
 
 Check orphan threshold (default 120s):
+
 ```bash
 # Tasks orphaned after 2 minutes of no response
 # Worker will reset and retry these

@@ -22,6 +22,7 @@ ports:
 ```
 
 **Verify mapping:**
+
 ```bash
 docker port goodfellaz17-postgres
 # Output should show: 5432/tcp -> 0.0.0.0:55432
@@ -163,6 +164,7 @@ docker logs --tail 20 goodfellaz17-postgres | grep -i "error\|failed\|fatal"
 Common errors:
 
 - `failed to initialize database` → Volume is corrupted. Destroy and recreate:
+
   ```bash
   docker rm -f goodfellaz17-postgres
   docker volume rm goodfellaz17_postgres_data

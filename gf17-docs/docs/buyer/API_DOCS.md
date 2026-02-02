@@ -7,6 +7,7 @@
 ## 🔐 Authentication
 
 All API calls require an API key:
+
 ```
 key=YOUR_API_KEY
 ```
@@ -18,6 +19,7 @@ Get your API key from the PWA dashboard after registration.
 ## 📋 Endpoints
 
 ### Base URL
+
 ```
 POST https://your-domain.com/api/v2
 ```
@@ -29,12 +31,14 @@ All requests use **POST** with form-encoded body.
 ## 🎵 SERVICES
 
 ### List All Services
+
 ```bash
 curl -X POST https://your-domain.com/api/v2 \
   -d "key=YOUR_KEY&action=services"
 ```
 
 **Response:**
+
 ```json
 {
   "services": [
@@ -70,6 +74,7 @@ curl -X POST https://your-domain.com/api/v2 \
 ## 🛒 ORDERS
 
 ### Place Order
+
 ```bash
 curl -X POST https://your-domain.com/api/v2 \
   -d "key=YOUR_KEY&action=add&service=1&link=https://open.spotify.com/track/xxx&quantity=1000"
@@ -85,6 +90,7 @@ curl -X POST https://your-domain.com/api/v2 \
 | quantity   | Yes      | Number of plays/followers |
 
 **Response:**
+
 ```json
 {
   "order": 12345,
@@ -93,12 +99,14 @@ curl -X POST https://your-domain.com/api/v2 \
 ```
 
 ### Order Status
+
 ```bash
 curl -X POST https://your-domain.com/api/v2 \
   -d "key=YOUR_KEY&action=status&order=12345"
 ```
 
 **Response:**
+
 ```json
 {
   "order": 12345,
@@ -118,6 +126,7 @@ curl -X POST https://your-domain.com/api/v2 \
 - `Refunded` - Funds returned
 
 ### Multiple Order Status
+
 ```bash
 curl -X POST https://your-domain.com/api/v2 \
   -d "key=YOUR_KEY&action=status&orders=12345,12346,12347"
@@ -128,12 +137,14 @@ curl -X POST https://your-domain.com/api/v2 \
 ## 💰 BALANCE
 
 ### Check Balance
+
 ```bash
 curl -X POST https://your-domain.com/api/v2 \
   -d "key=YOUR_KEY&action=balance"
 ```
 
 **Response:**
+
 ```json
 {
   "balance": 150.25,
@@ -146,12 +157,14 @@ curl -X POST https://your-domain.com/api/v2 \
 ## 🔄 REFILLS (Coming Soon)
 
 ### Create Refill
+
 ```bash
 curl -X POST https://your-domain.com/api/v2 \
   -d "key=YOUR_KEY&action=refill&order=12345"
 ```
 
 ### Refill Status
+
 ```bash
 curl -X POST https://your-domain.com/api/v2 \
   -d "key=YOUR_KEY&action=refill_status&refill=456"
@@ -172,6 +185,7 @@ curl -X POST https://your-domain.com/api/v2 \
 | `order_not_found` | Order ID invalid | Verify order ID |
 
 **Error Response:**
+
 ```json
 {
   "error": "invalid_key",
@@ -210,6 +224,7 @@ curl -X POST https://your-domain.com/api/v2 \
 ## 💻 CODE EXAMPLES
 
 ### PHP
+
 ```php
 <?php
 $ch = curl_init('https://your-domain.com/api/v2');
@@ -227,6 +242,7 @@ echo "Order ID: " . $response->order;
 ```
 
 ### Python
+
 ```python
 import requests
 
@@ -241,6 +257,7 @@ print(f"Order ID: {response.json()['order']}")
 ```
 
 ### JavaScript
+
 ```javascript
 fetch('https://your-domain.com/api/v2', {
     method: 'POST',

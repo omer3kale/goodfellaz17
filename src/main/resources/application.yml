@@ -5,6 +5,8 @@
 spring:
   application:
     name: goodfellaz17-provider
+  main:
+    allow-bean-definition-overriding: true
 
   # WebFlux Static Resources
   webflux:
@@ -14,17 +16,23 @@ spring:
       static-locations: classpath:/static/
       add-mappings: true
 
-  # Database - Uses NEON_* vars (REQUIRED in production)
-  # For tests, @ServiceConnection from Testcontainers overrides these
+  # Database - NEON PostgreSQL R2DBC Configuration
   r2dbc:
-    url: r2dbc:postgresql://${NEON_HOST:localhost}:5432/${NEON_DB:goodfellaz17}
-    username: ${NEON_USER:goodfellaz17}
-    password: ${NEON_PASSWORD:localdev123}
+    url: r2dbc:postgresql://ep-cold-sunset-a4rlwslr-pooler.us-east-1.aws.neon.tech:5432/neondb?sslmode=require
+    username: neondb_owner
+    password: npg_UqY4uNws0BEK
     pool:
       initial-size: 5
       max-size: 20
     properties:
-      sslMode: ${NEON_SSLMODE:DISABLE}
+      sslMode: REQUIRE
+
+  # SQL initialization
+  sql:
+    init:
+      mode: always
+      data-locations: classpath:data.sql
+      schema-locations: classpath:schema.sql
 
   # Async task execution
   task:
@@ -136,10 +144,19 @@ resend:
 # App Configuration
 app:
   base-url: ${APP_BASE_URL:https://goodfellaz17.onrender.com}
+
+  # Task Executor (Legacy - deprecated for scheduler)
   task-executor:
-    enabled: true
+    enabled: false
     poll-interval-ms: 100
     max-concurrent-tasks: 10
+
+  # Path A: TaskExecutionScheduler Configuration
+  scheduler:
+    enabled: ${APP_SCHEDULER_ENABLED:true}
+    poll-ms: ${APP_SCHEDULER_POLL_MS:100}  # Dev: 100ms, Prod: 5000ms
+    batch-size: ${APP_SCHEDULER_BATCH_SIZE:10}  # Tasks per poll cycle
+    concurrency: ${APP_SCHEDULER_CONCURRENCY:5}  # Parallel execution threads
 
 # SpringDoc OpenAPI / Swagger
 springdoc:

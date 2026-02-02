@@ -1,0 +1,66 @@
+# =============================================================================
+# TEST PROFILE - H2 In-Memory Database (No External Dependencies)
+# =============================================================================
+#
+# For quick testing without Docker or Neon connectivity
+# Uses H2 in-memory database with auto-schema generation
+
+spring:
+  application:
+    name: goodfellaz17-provider-test
+
+  # H2 In-Memory Database
+  r2dbc:
+    url: r2dbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    pool:
+      initial-size: 1
+      max-size: 5
+
+  # Auto-create schema on startup
+  sql:
+    init:
+      mode: always
+      data-locations: classpath:data.sql
+      schema-locations: classpath:schema.sql
+
+  # Disable dev tools in test
+  devtools:
+    restart:
+      enabled: false
+
+# Server Configuration
+server:
+  port: 8080
+
+# Bot Executor Configuration (Limited for testing)
+bot:
+  executor:
+    max-concurrent: 10
+  accounts:
+    farm-size: 50
+
+# Proxy Configuration (Mock only)
+proxy:
+  brightdata:
+    enabled: false
+  machine:
+    enabled: false
+
+# Task Scheduler Configuration (Path A)
+app:
+  scheduler:
+    enabled: true
+    poll-ms: 100
+    batch-size: 10
+    concurrency: 5
+
+# Logging for Path A verification
+logging:
+  level:
+    root: INFO
+    com.goodfellaz17: DEBUG
+    com.goodfellaz17.application.scheduler.TaskExecutionScheduler: DEBUG
+    org.springframework.r2dbc: INFO
+    io.r2dbc: INFO

@@ -9,12 +9,14 @@
 ### Step 1: Change Application Name
 
 Edit `pom.xml`:
+
 ```xml
 <artifactId>your-brand-provider</artifactId>
 <name>Your Brand SMM Panel</name>
 ```
 
 Edit `application.yml`:
+
 ```yaml
 spring:
   application:
@@ -24,6 +26,7 @@ spring:
 ### Step 2: Update PWA Branding
 
 Edit `src/main/resources/static/manifest.json`:
+
 ```json
 {
   "name": "Your Brand SMM",
@@ -44,6 +47,7 @@ Replace files in `src/main/resources/static/`:
 ### Step 4: Customize PWA Dashboard
 
 Edit `src/main/resources/static/index.html`:
+
 ```html
 <title>Your Brand SMM</title>
 <meta name="description" content="Your Brand - Premium Spotify Services">
@@ -101,6 +105,7 @@ mvn clean package
 ### Color Schemes
 
 **Default (Spotify Green):**
+
 ```css
 --primary: #1DB954;
 --secondary: #191414;
@@ -108,6 +113,7 @@ mvn clean package
 ```
 
 **Alternative Options:**
+
 ```css
 /* Ocean Blue */
 --primary: #0077B5;
@@ -149,6 +155,7 @@ Edit templates in `src/main/resources/templates/`:
 2. Settings → Custom Domains
 3. Add domain: `smm.yourbrand.com`
 4. Configure DNS:
+
    ```
    CNAME smm → your-app.onrender.com
    ```
@@ -158,6 +165,7 @@ Edit templates in `src/main/resources/templates/`:
 Render auto-provisions Let's Encrypt SSL.
 
 For custom certs:
+
 ```bash
 # Upload to Render or your server
 certbot certonly --webroot -w /var/www/html -d smm.yourbrand.com
@@ -229,6 +237,7 @@ spring:
 ### Change API Path
 
 Edit `SmmProviderController.java`:
+
 ```java
 @RestController
 @RequestMapping("/api/v2")  // Change to "/your-api"

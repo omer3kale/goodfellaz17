@@ -196,6 +196,7 @@ SUPABASE_KEY=your-anon-key
 The application auto-creates tables on first run with `ddl-auto: create`.
 
 For production, use provided SQL:
+
 ```bash
 psql $DATABASE_URL < scripts/init.sql
 ```
@@ -285,6 +286,7 @@ curl -X POST https://your-domain.com/api/v2 \
 ### Common Issues
 
 **App won't start:**
+
 ```bash
 # Check logs
 docker logs smm-panel
@@ -293,18 +295,21 @@ journalctl -u smm -f
 ```
 
 **Database connection failed:**
+
 ```bash
 # Test connection
 psql "postgresql://user:pass@host:5432/db?sslmode=require"
 ```
 
 **Out of memory:**
+
 ```bash
 # Increase heap
 JAVA_OPTS="-Xmx1g -Xms512m"
 ```
 
 **Port already in use:**
+
 ```bash
 # Change port
 PORT=8081

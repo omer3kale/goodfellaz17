@@ -49,6 +49,7 @@ When proposing changes (new features, tests, adapters), Claude must:
 3. **If an invariant would be weakened or broken, stop and ask for confirmation** before proceeding.
 
 Example:
+
 ```
 Invariant: "For each Order: quantity == tasks.size"
 Proposal: "Add retry logic to TaskExecutionService"

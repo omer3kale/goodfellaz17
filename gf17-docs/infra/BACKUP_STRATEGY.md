@@ -66,6 +66,7 @@ This document describes the backup strategy for the self-hosted Goodfellaz17 Pos
 6. **Logging**: All operations logged to `infra/backup.log`
 
 **Output format:**
+
 ```
 infra/backups/spotifybot_20260119_030000.sql.gz
 infra/backups/spotifybot_20260120_030000.sql.gz
@@ -141,6 +142,7 @@ crontab -e
 **Problem**: Accidental DELETE, wrong UPDATE, schema change gone wrong
 
 **Solution**:
+
 ```bash
 # 1. Stop the application
 pkill -f "spring-boot:run"
@@ -160,6 +162,7 @@ SPRING_PROFILES_ACTIVE=local-selfhosted mvn spring-boot:run
 **Problem**: Docker container dies, data volume corrupted
 
 **Solution**:
+
 ```bash
 # 1. Remove corrupted container and volume
 docker compose -f infra/docker-compose.db.yml down -v
@@ -190,6 +193,7 @@ sleep 10
 **Problem**: Moving from self-hosted to managed database
 
 **Solution**:
+
 ```bash
 # 1. Create final backup
 ./infra/backup-db.sh

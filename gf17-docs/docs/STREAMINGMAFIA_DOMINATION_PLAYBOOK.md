@@ -1096,6 +1096,7 @@ Acquire 107+ users legally through Telegram SMM groups and marketplace posts. No
 ### 6.1 Telegram Acquisition Strategy
 
 #### Target Groups (50 Groups → 107 Users Day 1)
+
 ```
 SMM Reseller Groups:
 - Turkish SMM Resellers (largest market)
@@ -1112,6 +1113,7 @@ Search Terms:
 ```
 
 #### Acquisition Message Template
+
 ```
 🎄 goodfellaz17 → BEATS STREAMINGMAFIA ✅
 🔗 https://goodfellaz17.onrender.com (PWA Dashboard)
@@ -1172,6 +1174,7 @@ public class ReferralService {
 ```
 
 ##### 6.1.2 Controller Endpoint
+
 ```java
 // ADD to SmmProviderController.java
 case "referral_code" -> getReferralCode(key);
@@ -1182,6 +1185,7 @@ case "referral_stats" -> getReferralStats(key);
 ### 6.2 Marketplace Listings
 
 #### BlackHatWorld Post Template
+
 ```
 [SERVICE] goodfellaz17 - Spotify SMM Panel | BEATS StreamingMafia Prices
 
@@ -1217,6 +1221,7 @@ PM for bulk pricing or child panel setup!
 ```
 
 #### Reddit r/SMM Post
+
 ```
 Title: [Benchmark] goodfellaz17 vs StreamingMafia - Price & Quality Comparison
 
@@ -1338,6 +1343,7 @@ echo "   Throughput: $((TOTAL_ORDERS / duration)) orders/sec"
 ### 7.2 Monitoring Dashboard Endpoints
 
 #### Add to `SmmProviderController.java`
+
 ```java
 // ADD to handleAction switch
 case "stats" -> getSystemStats(key);

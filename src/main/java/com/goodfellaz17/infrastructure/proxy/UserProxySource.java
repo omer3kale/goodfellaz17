@@ -18,56 +18,56 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * ProxySource adapter for User Arbitrage Network.
- * 
+ *
  * THE GENIUS: Users ARE the proxy infrastructure.
- * 
+ *
  * - Zero proxy costs (users provide residential IPs)
  * - Zero account costs (users have Spotify Premium)
  * - 30% commission to users = pure arbitrage profit
- * 
+ *
  * This adapts BotzzzUserProxyPool to the ProxySource interface
  * for seamless integration with hybrid routing.
  */
 @Component
 @Profile("!dev")  // Real user pool in production only
 public class UserProxySource implements ProxySource {
-    
+
     private static final Logger log = LoggerFactory.getLogger(UserProxySource.class);
-    
+
     private final BotzzzUserProxyPool userPool;
     private final Map<String, UserLease> activeLeases = new ConcurrentHashMap<>();
-    
+
     // Capacity tracking
     private final AtomicInteger usedToday = new AtomicInteger(0);
     private final AtomicLong lastAcquireTime = new AtomicLong(0);
-    private volatile long successCount = 0;
-    private volatile long failCount = 0;
-    
+    private final AtomicLong successCount = new AtomicLong(0);
+    private final AtomicLong failCount = new AtomicLong(0);
+
     // Configuration (could be externalized)
     private static final int CAPACITY_PER_DAY = 100000;  // 100k via user network
     private static final double COST_PER_1K = 0.00;      // FREE - users pay themselves
     private static final double RISK_LEVEL = 0.2;        // Low risk - real residential IPs
-    
+
     public UserProxySource(BotzzzUserProxyPool userPool) {
         this.userPool = userPool;
     }
-    
+
     @Override
     public String getName() {
         return "user";
     }
-    
+
     @Override
     public String getDisplayName() {
         return "User Arbitrage Network";
     }
-    
+
     @Override
     public boolean isEnabled() {
         // Enabled if we have at least 1 available user
         return userPool != null && userPool.getAvailableUserCount() > 0;
     }
-    
+
     @Override
     public boolean supportsGeo(String country) {
         if (country == null || "GLOBAL".equalsIgnoreCase(country)) {
@@ -83,7 +83,7 @@ public class UserProxySource implements ProxySource {
             return false;
         }
     }
-    
+
     @Override
     public boolean supportsProfile(RoutingProfile profile) {
         // User network is good for everything except ultra-high-volume
@@ -93,49 +93,49 @@ public class UserProxySource implements ProxySource {
         }
         return profile.allowsRisk(RISK_LEVEL);
     }
-    
+
     @Override
     public int getEstimatedCapacityPerDay() {
         return CAPACITY_PER_DAY;
     }
-    
+
     @Override
     public int getRemainingCapacity() {
         return Math.max(0, CAPACITY_PER_DAY - usedToday.get());
     }
-    
+
     @Override
     public double getCostPer1k() {
         return COST_PER_1K;  // FREE!
     }
-    
+
     @Override
     public double getRiskLevel() {
         return RISK_LEVEL;
     }
-    
+
     @Override
     public boolean isPremium() {
         return true;  // Real residential IPs = premium quality
     }
-    
+
     @Override
     public ProxyLease acquire(OrderContext ctx) throws NoCapacityException {
         // Check capacity
         if (getRemainingCapacity() <= 0) {
             throw new NoCapacityException(ctx.orderId(), ctx.serviceId(), getName());
         }
-        
+
         // Find available user for this geo
         GeoTarget geo = parseGeo(ctx.targetCountry());
         Optional<UserProxy> userOpt = userPool.nextHealthyUser(geo);
-        
+
         if (userOpt.isEmpty()) {
             throw new NoCapacityException(ctx.orderId(), ctx.serviceId(), getName());
         }
-        
+
         UserProxy user = userOpt.get();
-        
+
         // Create lease using user's IP as the "proxy"
         ProxyLease lease = ProxyLease.create(
             getName(),
@@ -152,35 +152,45 @@ public class UserProxySource implements ProxySource {
                 "source", "user_arbitrage"
             )
         );
-        
+
         // Track lease
         activeLeases.put(lease.leaseId(), new UserLease(lease, user));
         usedToday.incrementAndGet();
         lastAcquireTime.set(System.currentTimeMillis());
-        
-        log.info("User lease acquired: leaseId={}, userId={}, geo={}", 
+
+        log.info("User lease acquired: leaseId={}, userId={}, geo={}",
                 lease.leaseId(), user.getUserId(), geo);
-        
+
         return lease;
     }
-    
+
     @Override
     public void release(ProxyLease lease) {
         UserLease userLease = activeLeases.remove(lease.leaseId());
-        
+
         if (userLease != null) {
             // User goes back to available pool automatically
             log.debug("User lease released: leaseId={}", lease.leaseId());
-            successCount++;
+            successCount.incrementAndGet();
         }
     }
-    
+
+    /**
+     * Get success rate for monitoring/observability.
+     */
+    public double getSuccessRate() {
+        long total = successCount.get() + failCount.get();
+        return total > 0 ? (successCount.get() * 100.0) / total : 0.0;
+    }
+
     @Override
     public SourceStats getStats() {
-        double successRate = (successCount + failCount) > 0 
-            ? (double) successCount / (successCount + failCount) 
+        long successTotal = successCount.get();
+        long failTotal = failCount.get();
+        double successRate = (successTotal + failTotal) > 0
+            ? (double) successTotal / (successTotal + failTotal)
             : 1.0;
-            
+
         return new SourceStats(
             getName(),
             CAPACITY_PER_DAY,
@@ -191,7 +201,7 @@ public class UserProxySource implements ProxySource {
             lastAcquireTime.get()
         );
     }
-    
+
     // Helper to parse geo string to GeoTarget
     private GeoTarget parseGeo(String country) {
         if (country == null || "GLOBAL".equalsIgnoreCase(country)) {
@@ -203,7 +213,7 @@ public class UserProxySource implements ProxySource {
             return GeoTarget.WORLDWIDE;
         }
     }
-    
+
     // Internal record linking lease to user
     private record UserLease(ProxyLease lease, UserProxy user) {}
 }

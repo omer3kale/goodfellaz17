@@ -6,7 +6,7 @@ import java.time.Instant;
  * DeliveryMetrics: real-time pipeline health snapshot.
  * Tracks: total orders, success rate, task distribution, failure patterns.
  */
-public class DeliveryMetrics {
+public class OrderMetrics {
 
     private Long totalOrders;           // Total orders received
     private Long completedOrders;       // Orders successfully completed
@@ -29,7 +29,7 @@ public class DeliveryMetrics {
     private String pipelineStatus;      // "Healthy", "Degraded", "Critical"
 
     // Constructor
-    public DeliveryMetrics() {
+    public OrderMetrics() {
         this.totalOrders = 0L;
         this.completedOrders = 0L;
         this.failedOrders = 0L;

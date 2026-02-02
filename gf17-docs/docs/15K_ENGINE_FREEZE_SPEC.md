@@ -139,6 +139,7 @@ SPOTIFY_CLIENT_SECRET=your-client-secret
 Run this checklist before declaring the engine frozen:
 
 ### Prerequisites
+
 ```bash
 # 1. Ensure Postgres is running
 docker-compose up -d postgres

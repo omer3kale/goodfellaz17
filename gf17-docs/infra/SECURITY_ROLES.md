@@ -201,6 +201,7 @@ docker compose -f infra/docker-compose.db.yml up -d
 **Severity: MEDIUM** - Attacker can read/modify data but cannot alter schema.
 
 1. **Immediate:**
+
    ```bash
    # Rotate password immediately
    ./infra/setup-app-user.sh 'EmergencyNewPassword!'
@@ -224,6 +225,7 @@ docker compose -f infra/docker-compose.db.yml up -d
 **Severity: CRITICAL** - Attacker has full database control.
 
 1. **Immediate:**
+
    ```bash
    # Stop all database connections
    docker stop goodfellaz17-postgres
@@ -237,6 +239,7 @@ docker compose -f infra/docker-compose.db.yml up -d
    - Check for backdoor accounts or triggers
 
 3. **Recover:**
+
    ```bash
    # Option A: If attack was recent and you have a known-good backup
    docker compose -f infra/docker-compose.db.yml down -v

@@ -5,8 +5,14 @@ spring:
   main:
     allow-bean-definition-overriding: true
   flyway:
-    enabled: false  # Schema loaded via initScript
-  # Note: Do NOT specify r2dbc.url here - @ServiceConnection handles it
+    enabled: false
+  r2dbc:
+    url: r2dbc:h2:mem:///testdb;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+  sql:
+    init:
+      mode: never
 
 # Disable proxy system for tests
 proxy:

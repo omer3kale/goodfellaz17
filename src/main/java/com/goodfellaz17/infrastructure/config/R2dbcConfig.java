@@ -14,7 +14,7 @@ import static io.r2dbc.spi.ConnectionFactoryOptions.*;
 
 /**
  * Manual R2DBC Configuration.
- * 
+ *
  * This explicitly creates the R2DBC beans since auto-configuration
  * is not detecting them properly in the Spring Boot run context.
  */
@@ -35,19 +35,36 @@ public class R2dbcConfig {
     public ConnectionFactory connectionFactory() {
         // Parse the R2DBC URL
         String url = r2dbcUrl.replace("r2dbc:", "");
-        // url is now: postgresql://localhost:5432/goodfellaz17
-        
+
+        // Support both PostgreSQL and H2 in-memory databases
+        if (url.startsWith("h2:")) {
+            // H2 in-memory: h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+            // Convert H2 format to valid R2DBC format
+            String h2Url = "r2dbc:h2:mem:///testdb?DB_CLOSE_DELAY=-1&DB_CLOSE_ON_EXIT=FALSE";
+            return ConnectionFactories.get(h2Url);
+        }
+
+        // PostgreSQL URL parsing: postgresql://localhost:5432/goodfellaz17
         String[] parts = url.split("://");
+        if (parts.length < 2) {
+            // Fallback to default ConnectionFactories
+            return ConnectionFactories.get(r2dbcUrl);
+        }
+
         String driver = parts[0]; // postgresql
         String rest = parts[1]; // localhost:5432/goodfellaz17
-        
+
         String[] hostDb = rest.split("/");
+        if (hostDb.length < 2) {
+            return ConnectionFactories.get(r2dbcUrl);
+        }
+
         String hostPort = hostDb[0]; // localhost:5432
         String database = hostDb[1]; // goodfellaz17
-        
+
         String[] hp = hostPort.split(":");
         String host = hp[0];
-        int port = Integer.parseInt(hp[1]);
+        int port = hp.length > 1 ? Integer.parseInt(hp[1]) : 5432;
 
         ConnectionFactoryOptions options = ConnectionFactoryOptions.builder()
                 .option(DRIVER, driver)

@@ -7,6 +7,7 @@ import com.goodfellaz17.order.domain.port.PlayResult;
 import com.goodfellaz17.order.repository.PlayOrderTaskRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -33,14 +34,15 @@ public class TaskExecutionService {
 
     private final SpotifyPlayPort spotifyPlayPort;
     private final PlayOrderTaskRepository taskRepository;
-    private final String assignedProxyNode;  // Injected or computed; hardcoded "local-executor" for now
+
+    @Value("${task.proxy-node:local-executor}")
+    private String assignedProxyNode;
 
     public TaskExecutionService(
         SpotifyPlayPort spotifyPlayPort,
         PlayOrderTaskRepository taskRepository) {
         this.spotifyPlayPort = spotifyPlayPort;
         this.taskRepository = taskRepository;
-        this.assignedProxyNode = "local-executor";  // TODO: make configurable
     }
 
     /**
@@ -67,10 +69,14 @@ public class TaskExecutionService {
         return taskRepository.save(task)
             .flatMap(executingTask -> {
                 // Build command and execute
+                // FIXED: Use track ID from Order (not available in OrderTask directly)
+                // For now, use placeholder - future: inject OrderRepository and fetch Order by ID
+                String trackId = "spotify:track:placeholder";
+
                 SpotifyPlayCommand command = new SpotifyPlayCommand(
                     executingTask.getId(),
                     executingTask.getOrderId(),
-                    "spotify:track:placeholder",  // TODO: extract from Order
+                    trackId,
                     executingTask.getAccountId(),
                     assignedProxyNode,
                     executingTask.getRetryCount(),

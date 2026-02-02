@@ -13,11 +13,13 @@ This test plan validates the production-ready 1k order path with:
 ## Prerequisites
 
 1. **Docker running with Postgres**:
+
    ```bash
    docker-compose up -d postgres
    ```
 
 2. **App running with local profile**:
+
    ```bash
    export JAVA_HOME=$(/usr/libexec/java_home -v 17)
    SPRING_PROFILES_ACTIVE=local mvn spring-boot:run -DskipTests
@@ -36,6 +38,7 @@ This test plan validates the production-ready 1k order path with:
 ### Test 1: Basic 1k Order (Instant Execution in local)
 
 **Request:**
+
 ```bash
 curl -s -X POST http://localhost:8080/api/public/orders \
   -H "Content-Type: application/json" \
@@ -48,6 +51,7 @@ curl -s -X POST http://localhost:8080/api/public/orders \
 ```
 
 **Expected Response (201 Created):**
+
 ```json
 {
   "id": "uuid-here",
@@ -61,10 +65,12 @@ curl -s -X POST http://localhost:8080/api/public/orders \
 ```
 
 **Expected DB State:**
+
 ```sql
 SELECT id, quantity, delivered, remains, status, total_cost
 FROM orders WHERE quantity = 1000 ORDER BY created_at DESC LIMIT 1;
 ```
+
 | id | quantity | delivered | remains | status | total_cost |
 |----|----------|-----------|---------|--------|------------|
 | uuid | 1000 | 1000 | 0 | COMPLETED | 2.00 |
@@ -74,6 +80,7 @@ FROM orders WHERE quantity = 1000 ORDER BY created_at DESC LIMIT 1;
 ### Test 2: Idempotency - First Request
 
 **Request:**
+
 ```bash
 curl -s -X POST http://localhost:8080/api/public/orders \
   -H "Content-Type: application/json" \
@@ -87,6 +94,7 @@ curl -s -X POST http://localhost:8080/api/public/orders \
 ```
 
 **Expected Response (201 Created):**
+
 ```json
 {
   "id": "uuid-A",
@@ -104,6 +112,7 @@ Save the returned `id` as ORDER_ID for next test.
 ### Test 3: Idempotency - Retry Same Key (No Double Charge!)
 
 **Request (same `idempotencyKey`):**
+
 ```bash
 curl -s -X POST http://localhost:8080/api/public/orders \
   -H "Content-Type: application/json" \
@@ -117,6 +126,7 @@ curl -s -X POST http://localhost:8080/api/public/orders \
 ```
 
 **Expected Response (200 OK - not 201!):**
+
 ```json
 {
   "id": "uuid-A",              // SAME ID as before
@@ -128,6 +138,7 @@ curl -s -X POST http://localhost:8080/api/public/orders \
 ```
 
 **Verify No Double Charge:**
+
 ```sql
 SELECT COUNT(*) FROM orders WHERE external_order_id = 'my-panel-order-12345';
 -- Should return: 1 (not 2!)
@@ -141,6 +152,7 @@ SELECT balance FROM users WHERE api_key = 'test-api-key-local-dev-12345';
 ### Test 4: Validation - Invalid URL
 
 **Request:**
+
 ```bash
 curl -s -X POST http://localhost:8080/api/public/orders \
   -H "Content-Type: application/json" \
@@ -153,6 +165,7 @@ curl -s -X POST http://localhost:8080/api/public/orders \
 ```
 
 **Expected Response (422 Unprocessable Entity):**
+
 ```json
 {
   "code": "url_invalid",
@@ -166,6 +179,7 @@ curl -s -X POST http://localhost:8080/api/public/orders \
 ### Test 5: Validation - Quantity Too Low
 
 **Request:**
+
 ```bash
 curl -s -X POST http://localhost:8080/api/public/orders \
   -H "Content-Type: application/json" \
@@ -178,6 +192,7 @@ curl -s -X POST http://localhost:8080/api/public/orders \
 ```
 
 **Expected Response (422 Unprocessable Entity):**
+
 ```json
 {
   "code": "quantity_too_low",
@@ -191,6 +206,7 @@ curl -s -X POST http://localhost:8080/api/public/orders \
 ### Test 6: Insufficient Balance
 
 **Drain the balance first, then request large order:**
+
 ```bash
 curl -s -X POST http://localhost:8080/api/public/orders \
   -H "Content-Type: application/json" \
@@ -203,6 +219,7 @@ curl -s -X POST http://localhost:8080/api/public/orders \
 ```
 
 **Expected Response (402 Payment Required):**
+
 ```json
 {
   "code": "balance_insufficient",
@@ -216,12 +233,14 @@ curl -s -X POST http://localhost:8080/api/public/orders \
 ### Test 7: Order Status Check
 
 **Request:**
+
 ```bash
 ORDER_ID="<uuid-from-test-2>"
 curl -s "http://localhost:8080/api/public/orders/$ORDER_ID?apiKey=test-api-key-local-dev-12345" | jq .
 ```
 
 **Expected Response (200 OK):**
+
 ```json
 {
   "id": "uuid-A",
@@ -242,11 +261,13 @@ curl -s "http://localhost:8080/api/public/orders/$ORDER_ID?apiKey=test-api-key-l
 ### Test 8: Capacity Check
 
 **Request:**
+
 ```bash
 curl -s http://localhost:8080/api/public/capacity/summary | jq .
 ```
 
 **Expected Response (200 OK):**
+
 ```json
 {
   "canAccept15kOrder": true,
@@ -265,6 +286,7 @@ curl -s http://localhost:8080/api/public/capacity/summary | jq .
 ## DB Verification Queries
 
 ### Check Order + Transaction Atomicity
+
 ```sql
 -- Orders and transactions should match
 SELECT
@@ -282,6 +304,7 @@ LIMIT 5;
 ```
 
 ### Check No Duplicate Orders for Same Idempotency Key
+
 ```sql
 SELECT external_order_id, COUNT(*)
 FROM orders
@@ -292,6 +315,7 @@ HAVING COUNT(*) > 1;
 ```
 
 ### Check User Balance After Tests
+
 ```sql
 SELECT email, balance, api_key
 FROM users
@@ -310,6 +334,7 @@ grep "ORDER_" /path/to/app.log | tail -20
 ```
 
 **Expected log patterns:**
+
 ```
 ORDER_CREATE_START | userId=uuid | quantity=1000 | serviceId=uuid | idempotencyKey=none
 ORDER_INSTANT_COMPLETED | orderId=uuid | userId=uuid | quantity=1000 | cost=2.00 | balanceBefore=1000.00 | balanceAfter=998.00

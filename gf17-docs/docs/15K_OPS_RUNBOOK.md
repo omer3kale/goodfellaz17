@@ -55,16 +55,20 @@
 ## 2. Health Check Endpoints
 
 ### 2.1 Primary Health Check
+
 ```bash
 curl -s http://localhost:8080/actuator/health | jq .
 ```
 
 ### 2.2 Worker Status
+
 ```bash
 curl -s -H "X-Api-Key: $API_KEY" \
   http://localhost:8080/api/admin/worker/status | jq .
 ```
+
 **Expected response:**
+
 ```json
 {
   "workerId": "prod-worker-abc123",
@@ -78,6 +82,7 @@ curl -s -H "X-Api-Key: $API_KEY" \
 ```
 
 ### 2.3 Invariant Validation
+
 ```bash
 # Single order
 curl -s -H "X-Api-Key: $API_KEY" \
@@ -93,6 +98,7 @@ curl -s -H "X-Api-Key: $API_KEY" \
 ```
 
 ### 2.4 Capacity Check
+
 ```bash
 curl -s -H "X-Api-Key: $API_KEY" \
   http://localhost:8080/api/admin/capacity | jq .
@@ -109,6 +115,7 @@ curl -s -H "X-Api-Key: $API_KEY" \
 - Multiple orders with `failedPermanentPlays > 0`
 
 **Diagnosis:**
+
 ```bash
 # Check dead letter queue
 curl -s -H "X-Api-Key: $API_KEY" \
@@ -130,6 +137,7 @@ psql $DATABASE_URL -c "
 3. **Network issues** - Check connectivity to proxy providers
 
 **Resolution:**
+
 ```bash
 # If proxy issue, seed more proxies
 curl -X POST -H "X-Api-Key: $API_KEY" \
@@ -152,6 +160,7 @@ GOODFELLAZ17_WORKER_BATCH_SIZE=5 java -jar app.jar
 - Worker logs show "Recovering orphaned task"
 
 **Diagnosis:**
+
 ```bash
 curl -s -H "X-Api-Key: $API_KEY" \
   http://localhost:8080/api/admin/invariants/orphans | jq .
@@ -176,6 +185,7 @@ curl -s -H "X-Api-Key: $API_KEY" \
 - Task progress not advancing
 
 **Diagnosis:**
+
 ```bash
 # Get order progress
 curl -s -H "X-Api-Key: $API_KEY" \
@@ -196,6 +206,7 @@ psql $DATABASE_URL -c "
 3. **No healthy proxies** available
 
 **Resolution:**
+
 ```bash
 # Force immediate retry (resets retry_after)
 psql $DATABASE_URL -c "
@@ -223,6 +234,7 @@ curl -X POST -H "X-Api-Key: $API_KEY" \
 - Order shows COMPLETED but delivered ≠ expected
 
 **Diagnosis:**
+
 ```bash
 curl -s -H "X-Api-Key: $API_KEY" \
   "http://localhost:8080/api/admin/invariants/orders/{orderId}" | jq .
@@ -231,6 +243,7 @@ curl -s -H "X-Api-Key: $API_KEY" \
 **This is a BUG.** Escalate immediately to engineering.
 
 **Collect diagnostic info:**
+
 ```bash
 # Export order state
 psql $DATABASE_URL -c "
@@ -255,6 +268,7 @@ psql $DATABASE_URL -c "
 ## 4. Prometheus Metrics Reference
 
 ### 4.1 Key Metrics
+
 ```
 # Tasks by status (counter)
 delivery_tasks_total{status="completed"}
@@ -280,17 +294,20 @@ delivery_batch_duration_seconds
 ### 4.2 Grafana Dashboard Queries
 
 **Delivery Rate (plays/minute):**
+
 ```promql
 rate(delivery_plays_total{outcome="delivered"}[5m]) * 60
 ```
 
 **Failure Rate:**
+
 ```promql
 rate(delivery_tasks_total{status="failed_permanent"}[5m]) /
 rate(delivery_tasks_total[5m]) * 100
 ```
 
 **Dead Letter Growth:**
+
 ```promql
 delta(delivery_dead_letter_queue[1h])
 ```
@@ -300,6 +317,7 @@ delta(delivery_dead_letter_queue[1h])
 ## 5. Database Queries
 
 ### 5.1 Order Health Check
+
 ```sql
 -- Orders stuck > 2 hours
 SELECT id, status, quantity, delivered, created_at,
@@ -310,6 +328,7 @@ WHERE status = 'PROCESSING'
 ```
 
 ### 5.2 Task Distribution
+
 ```sql
 -- Tasks by status for all active orders
 SELECT
@@ -327,6 +346,7 @@ GROUP BY o.id, o.quantity;
 ```
 
 ### 5.3 Recent Failures
+
 ```sql
 -- Last 20 permanent failures with errors
 SELECT
@@ -343,6 +363,7 @@ LIMIT 20;
 ```
 
 ### 5.4 Invariant Health View
+
 ```sql
 SELECT * FROM v_invariant_health;
 ```
@@ -352,6 +373,7 @@ SELECT * FROM v_invariant_health;
 ## 6. Emergency Procedures
 
 ### 6.1 Stop All Delivery (Emergency Brake)
+
 ```bash
 # Option 1: Disable worker via config
 kubectl set env deployment/goodfellaz17 GOODFELLAZ17_WORKER_ENABLED=false
@@ -362,6 +384,7 @@ kubectl scale deployment/goodfellaz17 --replicas=0
 
 ### 6.2 Drain Dead Letter Queue
 Only after fixing root cause:
+
 ```sql
 -- Move failed tasks back to retry queue
 UPDATE order_tasks
@@ -374,6 +397,7 @@ WHERE status = 'FAILED_PERMANENT'
 
 ### 6.3 Force Order Completion
 **LAST RESORT - Only if customer agrees to partial delivery:**
+
 ```sql
 -- Calculate delivered from completed tasks
 UPDATE orders

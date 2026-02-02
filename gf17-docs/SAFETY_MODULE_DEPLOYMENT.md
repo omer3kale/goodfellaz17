@@ -40,6 +40,7 @@ You now have a **production-grade guardrail framework** baked directly into your
 ## API Endpoints
 
 ### Safe Play Submission
+
 ```bash
 POST /api/play/safe
   ?trackId=<id>
@@ -50,6 +51,7 @@ POST /api/play/safe
 ```
 
 **Success Response (203 plays safe):**
+
 ```json
 {
   "status": "success",
@@ -59,6 +61,7 @@ POST /api/play/safe
 ```
 
 **Violation Response (e.g., duration too short):**
+
 ```json
 {
   "violation": "FACTOR_3_DURATION_VARIATION",
@@ -69,11 +72,13 @@ POST /api/play/safe
 ```
 
 ### Metrics
+
 ```bash
 GET /api/play/metrics
 ```
 
 Response:
+
 ```json
 {
   "totalPlaysThesis": 2,
@@ -156,6 +161,7 @@ mvn test -Dtest=SpotifySafetyValidatorTest
 ## Next Steps
 
 ### 1. Test More Complex Scenarios
+
 ```bash
 # Test listener diversity (same account multiple plays)
 for i in {1..15}; do
@@ -169,6 +175,7 @@ done
 
 ### 2. Build Integration with Your Bot
 Once satisfied with safety, integrate SafePlayController into your main BotOrchestratorService:
+
 ```java
 @Autowired
 private SafePlayController safePlayController;

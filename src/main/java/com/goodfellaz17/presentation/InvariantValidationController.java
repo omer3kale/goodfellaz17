@@ -1,7 +1,7 @@
 package com.goodfellaz17.presentation;
 
-import com.goodfellaz17.application.invariants.OrderInvariantValidator;
-import com.goodfellaz17.application.invariants.OrderInvariantValidator.*;
+import com.goodfellaz17.application.invariants.OrderInvariantValidator_Thesis;
+import com.goodfellaz17.application.invariants.OrderInvariantValidator_Thesis.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -13,34 +13,34 @@ import java.util.UUID;
 /**
  * Admin endpoints for invariant validation.
  * Use these to verify system health and debug issues.
- * 
+ *
  * Endpoints:
  * - GET /api/admin/invariants/orders/{orderId} - Validate single order
  * - GET /api/admin/invariants/all - Validate all orders (expensive!)
  * - GET /api/admin/invariants/orphans - Check for orphaned tasks
- * 
+ *
  * @author goodfellaz17
  * @since 1.0.0
  */
 @RestController
 @RequestMapping("/api/admin/invariants")
 public class InvariantValidationController {
-    
+
     private static final Logger log = LoggerFactory.getLogger(InvariantValidationController.class);
-    
-    private final OrderInvariantValidator invariantValidator;
-    
-    public InvariantValidationController(OrderInvariantValidator invariantValidator) {
+
+    private final OrderInvariantValidator_Thesis invariantValidator;
+
+    public InvariantValidationController(OrderInvariantValidator_Thesis invariantValidator) {
         this.invariantValidator = invariantValidator;
     }
-    
+
     /**
      * Validate all invariants for a specific order.
      */
     @GetMapping("/orders/{orderId}")
     public Mono<ResponseEntity<ValidationResponse>> validateOrder(@PathVariable UUID orderId) {
         log.info("Validating invariants for order: {}", orderId);
-        
+
         return invariantValidator.validateOrder(orderId)
             .map(result -> {
                 ValidationResponse response = new ValidationResponse(
@@ -50,7 +50,7 @@ public class InvariantValidationController {
                     result.violations(),
                     result.errorMessage()
                 );
-                
+
                 if (result.passed()) {
                     return ResponseEntity.ok(response);
                 } else {
@@ -58,7 +58,7 @@ public class InvariantValidationController {
                 }
             });
     }
-    
+
     /**
      * Validate all orders in the system.
      * WARNING: This is expensive and should only be used for debugging.
@@ -66,7 +66,7 @@ public class InvariantValidationController {
     @GetMapping("/all")
     public Mono<ResponseEntity<GlobalValidationResponse>> validateAllOrders() {
         log.warn("Running global invariant validation - this may be slow!");
-        
+
         return invariantValidator.validateAllOrders()
             .map(result -> {
                 GlobalValidationResponse response = new GlobalValidationResponse(
@@ -83,7 +83,7 @@ public class InvariantValidationController {
                         ))
                         .toList()
                 );
-                
+
                 if (result.allPassed()) {
                     return ResponseEntity.ok(response);
                 } else {
@@ -91,7 +91,7 @@ public class InvariantValidationController {
                 }
             });
     }
-    
+
     /**
      * Quick health check: are there any orphaned EXECUTING tasks?
      */
@@ -104,7 +104,7 @@ public class InvariantValidationController {
                     result.orphanCount(),
                     result.orphanTaskIds().stream().map(UUID::toString).toList()
                 );
-                
+
                 if (result.noOrphans()) {
                     return ResponseEntity.ok(response);
                 } else {
@@ -112,11 +112,11 @@ public class InvariantValidationController {
                 }
             });
     }
-    
+
     // =========================================================================
     // RESPONSE TYPES
     // =========================================================================
-    
+
     public record ValidationResponse(
         boolean passed,
         String orderId,
@@ -124,20 +124,20 @@ public class InvariantValidationController {
         java.util.List<InvariantViolation> violations,
         String errorMessage
     ) {}
-    
+
     public record GlobalValidationResponse(
         boolean allPassed,
         long passedOrders,
         long failedOrders,
         java.util.List<FailedOrderSummary> failures
     ) {}
-    
+
     public record FailedOrderSummary(
         String orderId,
         String orderType,
         java.util.List<String> violations
     ) {}
-    
+
     public record OrphanCheckResponse(
         boolean healthy,
         int orphanCount,

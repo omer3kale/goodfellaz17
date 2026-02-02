@@ -1,0 +1,35 @@
+# Neon PostgreSQL Profile Configuration
+# =======================================
+# Production: Neon Serverless PostgreSQL (us-east-1)
+# Uses connection pooling for optimal performance
+
+spring:
+  config:
+    activate:
+      on-profile: neon
+
+  r2dbc:
+    url: r2dbc:postgresql://ep-cold-sunset-a4rlwslr-pooler.us-east-1.aws.neon.tech:5432/neondb?sslmode=require
+    username: neondb_owner
+    password: npg_UqY4uNws0BEK
+    pool:
+      initial-size: 10
+      max-size: 30
+      max-acquire-time: 3000
+      max-idle-time: 1800000
+    properties:
+      sslMode: REQUIRE
+      tcpKeepAlives: true
+
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+
+  jpa:
+    show-sql: false
+
+logging:
+  level:
+    org.springframework.r2dbc: INFO
+    io.r2dbc.pool: DEBUG

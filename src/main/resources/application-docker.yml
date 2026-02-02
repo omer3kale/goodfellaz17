@@ -1,0 +1,15 @@
+spring:
+  r2dbc:
+    url: r2dbc:postgresql://postgres:5432/spotifybot
+    username: postgres
+    password: postgres
+    properties:
+      sslMode: DISABLE
+  sql:
+    init:
+      mode: never
+
+# Ensure base URL points to the container name
+streaming:
+  worker:
+    url: http://streaming-worker:3000

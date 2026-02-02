@@ -50,7 +50,7 @@ Unit Tests (8 tests, mocked repos)
   - Status code distribution
 - **Target Success Rate:** ≥95%
 - **Prerequisites:**
-  - App running on http://localhost:8080
+  - App running on <http://localhost:8080>
   - curl available in PATH
   - Connection pooling in OrderOrchestrator
 
@@ -75,6 +75,7 @@ Unit Tests (8 tests, mocked repos)
 
 ### Chapter 3: Methodology (Implementation)
 **Content:** Three-layer testing strategy
+
 ```
 Unit (Component Level)
 ├─ Fast execution (<2s)
@@ -143,6 +144,7 @@ Commit 3: feat: add integration + chaos testing (pyramid complete)
 ## Next Steps (For Thesis Writing)
 
 1. **Run chaos test with app live:**
+
    ```bash
    # Terminal 1: Start app
    java -jar target/goodfellaz17-provider-1.0.0-SNAPSHOT.jar &
@@ -155,6 +157,7 @@ Commit 3: feat: add integration + chaos testing (pyramid complete)
    ```
 
 2. **Capture integration test output (requires Docker):**
+
    ```bash
    mvn test -Dtest=OrderCreationIntegrationTest 2>&1 | tee INTEGRATION_RESULTS.txt
    ```

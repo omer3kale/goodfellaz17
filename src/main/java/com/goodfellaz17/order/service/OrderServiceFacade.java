@@ -2,7 +2,7 @@ package com.goodfellaz17.order.service;
 
 import com.goodfellaz17.order.domain.Order;
 import com.goodfellaz17.order.domain.OrderTask;
-import com.goodfellaz17.order.metrics.DeliveryMetrics;
+import com.goodfellaz17.order.metrics.OrderMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -114,7 +114,7 @@ public class OrderServiceFacade {
     /**
      * Get metrics with logging.
      */
-    public Mono<DeliveryMetrics> getMetricsWithAudit() {
+    public Mono<OrderMetrics> getMetricsWithAudit() {
         return orchestrator.getMetrics()
             .doOnSuccess(metrics ->
                 logger.debug("📊 Pipeline metrics | totalOrders={} | successRate={}% | status={}",

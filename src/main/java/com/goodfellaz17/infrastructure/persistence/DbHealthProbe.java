@@ -15,10 +15,10 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Database Health Probe - Scheduled connectivity check.
- * 
+ *
  * Executes SELECT 1 every 30 seconds to monitor database availability
  * and latency. Tracks consecutive failures for circuit-breaker logic.
- * 
+ *
  * Thresholds are configurable via:
  * - goodfellaz17.db.health.latency-warning-threshold-ms (default: 500)
  * - goodfellaz17.db.health.max-consecutive-failures (default: 3)
@@ -39,7 +39,7 @@ public class DbHealthProbe {
     // Thread-safe state
     private final AtomicLong lastLatencyMs = new AtomicLong(-1);
     private final AtomicInteger consecutiveFailures = new AtomicInteger(0);
-    private final AtomicReference<Instant> lastCheckTime = new AtomicReference<>(null);
+    private final AtomicReference<Instant> lastCheckTime = new AtomicReference<>(Instant.now());
     private final AtomicReference<String> lastError = new AtomicReference<>(null);
 
     public DbHealthProbe(DatabaseClient databaseClient) {
@@ -67,7 +67,7 @@ public class DbHealthProbe {
             lastError.set(null);
 
             if (latencyMs > latencyWarningThresholdMs) {
-                log.warn("DB health check SLOW: {}ms (threshold: {}ms)", 
+                log.warn("DB health check SLOW: {}ms (threshold: {}ms)",
                         latencyMs, latencyWarningThresholdMs);
             } else {
                 log.info("DB health check OK: {}ms", latencyMs);
@@ -79,7 +79,7 @@ public class DbHealthProbe {
             int failures = consecutiveFailures.incrementAndGet();
             lastError.set(e.getMessage());
 
-            log.error("DB health check FAILED: {} (consecutive failures: {}, latency: {}ms)", 
+            log.error("DB health check FAILED: {} (consecutive failures: {}, latency: {}ms)",
                     e.getMessage(), failures, latencyMs);
         }
     }

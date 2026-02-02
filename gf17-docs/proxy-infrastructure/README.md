@@ -93,6 +93,7 @@ mvn test -Dtest="GoodFellaz17IntegrationTest"
 ## Rollback
 
 If proxy work breaks anything:
+
 ```bash
 git checkout thesis-core-freeze
 ```

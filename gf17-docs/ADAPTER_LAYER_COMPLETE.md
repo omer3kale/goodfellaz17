@@ -45,9 +45,11 @@ Validates all invariants at task level.
 
 ### 6. **REST Endpoint** (Bonus: 30 min)
 ✅ Added to `OrderController`:
+
 ```
 POST /api/orders/{orderId}/tasks/{taskId}/execute
 ```
+
 - Fetches task by ID
 - Validates task belongs to order
 - Calls TaskExecutionService
@@ -79,6 +81,7 @@ All commits pass pre-commit security gates (6/6).
 ## What's Ready Now
 
 ### For Manual Testing:
+
 ```bash
 # 1. Start the app
 java -jar target/goodfellaz17-provider-1.0.0-SNAPSHOT.jar --spring.profiles.active=local-mac &

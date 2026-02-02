@@ -103,6 +103,7 @@ tail -100 /tmp/app.log
 ## Troubleshooting
 
 **App won't start:**
+
 ```bash
 # Check if port 8080 is in use
 lsof -i :8080
@@ -115,6 +116,7 @@ tail -50 /tmp/app.log | grep ERROR
 ```
 
 **Tests failing:**
+
 ```bash
 # Recompile first
 mvn clean compile

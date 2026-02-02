@@ -420,6 +420,7 @@ SELECT * FROM v_tenant_status;
 ```
 
 Output:
+
 ```
 tenant_code   | status | schema_status    | storage_used_pct | last_backup_at
 --------------+--------+------------------+------------------+------------------

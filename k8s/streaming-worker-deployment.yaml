@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: streaming-worker
+spec:
+  replicas: 200
+  selector:
+    matchLabels:
+      app: streaming-worker
+  template:
+    metadata:
+      labels:
+        app: streaming-worker
+    spec:
+      containers:
+      - name: worker
+        image: botzzz/streaming-worker:latest
+        resources:
+          requests:
+            memory: "200Mi"
+            cpu: "400m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        env:
+        - name: ORCHESTRATOR_URL
+          value: "http://streaming-orchestrator-service:8080"
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: streaming-worker-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: streaming-worker
+  minReplicas: 150
+  maxReplicas: 300
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70

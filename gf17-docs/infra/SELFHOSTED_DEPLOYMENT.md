@@ -88,6 +88,7 @@ docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 ```
 
 Expected output:
+
 ```
 NAMES                    STATUS                    PORTS
 goodfellaz17-pgbouncer   Up 2 minutes (healthy)    0.0.0.0:6432->5432/tcp
@@ -135,6 +136,7 @@ curl -s http://localhost:8080/actuator/health | python3 -m json.tool
 ### Why PgBouncer?
 
 Without pooling:
+
 ```
 10 worker pods × 5 connections = 50 direct DB connections
 Database max_connections = 100
@@ -142,6 +144,7 @@ Database max_connections = 100
 ```
 
 With PgBouncer:
+
 ```
 10 worker pods × 5 connections = 50 client connections to PgBouncer
 PgBouncer pool_size = 25 actual DB connections
@@ -329,6 +332,7 @@ goodfellaz17:
 See [MULTI_TENANT_GUIDE.md](MULTI_TENANT_GUIDE.md) for detailed instructions.
 
 Quick version:
+
 ```bash
 # 1. Create tenant database
 ./infra/branch-db.sh botzzz773

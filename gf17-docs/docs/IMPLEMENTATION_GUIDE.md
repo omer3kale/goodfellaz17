@@ -759,6 +759,7 @@ railway up
 Create `docs/adr/` folder with:
 
 **ADR-001: Domain-Driven Design**
+
 ```markdown
 # ADR-001: Domain-Driven Design
 
@@ -781,6 +782,7 @@ Implement DDD with:
 ```
 
 **ADR-002: MontiCore DSL for Service Catalog**
+
 ```markdown
 # ADR-002: MontiCore DSL
 
@@ -800,6 +802,7 @@ Generate service catalog from DSL definitions.
 ```
 
 **ADR-003: User Arbitrage Model**
+
 ```markdown
 # ADR-003: User Arbitrage Model
 

@@ -2,7 +2,7 @@ package com.goodfellaz17.order.service;
 
 import com.goodfellaz17.order.domain.Order;
 import com.goodfellaz17.order.domain.OrderTask;
-import com.goodfellaz17.order.metrics.DeliveryMetrics;
+import com.goodfellaz17.order.metrics.OrderMetrics;
 import com.goodfellaz17.order.repository.PlayOrderRepository;
 import com.goodfellaz17.order.repository.PlayOrderTaskRepository;
 import org.springframework.stereotype.Service;
@@ -163,7 +163,7 @@ public class OrderOrchestrator {
      * Get complete metrics for the pipeline.
      * Reactive: aggregates counts from all status queries using combiner function.
      */
-    public Mono<DeliveryMetrics> getMetrics() {
+    public Mono<OrderMetrics> getMetrics() {
         return Mono.zip(
             java.util.Arrays.asList(
                 orderRepository.count(),
@@ -181,7 +181,7 @@ public class OrderOrchestrator {
                 orderRepository.sumPlaysFailed()
             ),
             array -> {
-                DeliveryMetrics metrics = new DeliveryMetrics();
+                OrderMetrics metrics = new OrderMetrics();
 
                 metrics.setTotalOrders((Long) array[0]);
                 metrics.setCompletedOrders((Long) array[1]);

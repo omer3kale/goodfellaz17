@@ -1,0 +1,374 @@
+package com.goodfellaz17.integration;
+
+import com.goodfellaz17.domain.model.generated.OrderEntity;
+import com.goodfellaz17.domain.model.generated.OrderTaskEntity;
+import com.goodfellaz17.domain.model.generated.TaskStatus;
+import com.goodfellaz17.infrastructure.persistence.generated.OrderRepository;
+import com.goodfellaz17.infrastructure.persistence.generated.OrderTaskRepository;
+import com.goodfellaz17.infrastructure.metrics.DeliveryMetrics;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.reactive.server.WebTestClient;
+import org.springframework.web.reactive.function.BodyInserters;
+import reactor.test.StepVerifier;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.concurrent.TimeUnit;
+
+import static org.assertj.core.api.Assertions.*;
+
+/**
+ * Integration tests for 15k order delivery system.
+ *
+ * Test profile: "test" (time multiplier 720x, failure injection enabled)
+ *
+ * These tests verify:
+ * 1. Order invariants are maintained
+ * 2. Task creation and execution flow
+ * 3. Orphan detection and recovery
+ * 4. Metrics collection
+ * 5. End-to-end 15k delivery
+ *
+ * @author goodfellaz17
+ * @since 1.0.0
+ */
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@ActiveProfiles("test")
+@DisplayName("15k Order Delivery Integration Tests")
+class Delivery15kIntegrationTest {
+
+    @Autowired
+    private WebTestClient webTestClient;
+
+    @Autowired
+    private OrderRepository orderRepository;
+
+    @Autowired
+    private OrderTaskRepository taskRepository;
+
+    @Autowired
+    private DeliveryMetrics metrics;
+
+    @BeforeEach
+    void setUp() {
+        // Clean up before each test
+        StepVerifier.create(taskRepository.deleteAll())
+            .verifyComplete();
+
+        StepVerifier.create(orderRepository.deleteAll())
+            .verifyComplete();
+    }
+
+    // =========================================================================
+    // TEST 1: Create 15k order via REST API
+    // =========================================================================
+
+    @Test
+    @DisplayName("Should create 15k order and split into tasks")
+    @Timeout(value = 30, unit = TimeUnit.SECONDS)
+    void testCreate15kOrder() {
+        // GIVEN: Order request for 15,000 plays
+        String orderPayload = """
+            {
+              "serviceId": "spotify-plays",
+              "quantity": 15000,
+              "usesTaskDelivery": true
+            }
+            """;
+
+        // WHEN: POST to /api/orders
+        webTestClient.post()
+            .uri("/api/orders")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(orderPayload))
+            .exchange()
+
+            // THEN: Accept with 202
+            .expectStatus().isAccepted()
+            .returnResult(String.class)
+            .getResponseBody()
+            .blockFirst();
+
+        // AND: Verify tasks were created
+        StepVerifier.create(
+            taskRepository.count()
+                .delayElement(Duration.ofSeconds(1)) // Let task generation run
+        )
+        .assertNext(count -> assertThat(count)
+            .as("Should have multiple tasks for 15k order")
+            .isGreaterThan(10)
+        )
+        .verifyComplete();
+
+        // AND: Verify metrics incremented
+        assertThat(metrics.getOrdersTotal())
+            .as("Orders total counter")
+            .isGreaterThan(0);
+    }
+
+    // =========================================================================
+    // TEST 2: Task execution and completion
+    // =========================================================================
+
+    @Test
+    @DisplayName("Should execute tasks and complete order")
+    @Timeout(value = 60, unit = TimeUnit.SECONDS)
+    void testTaskExecutionFlow() {
+        // GIVEN: Create 15k order
+        OrderEntity order = new OrderEntity();
+        order.setServiceId("spotify-plays");
+        order.setQuantity(15000);
+        order.setUsesTaskDelivery(true);
+        order.setStatus("PROCESSING");
+        order.setCreatedAt(Instant.now());
+
+        OrderEntity savedOrder = StepVerifier.create(orderRepository.save(order))
+            .assertNext(o -> assertThat(o.getId()).isNotNull())
+            .returnStepVerifier()
+            .verifyComplete()
+            .then(orderRepository.save(order).blockFirst());
+
+        // AND: Create 30 tasks (500 plays each)
+        for (int i = 0; i < 30; i++) {
+            OrderTaskEntity task = new OrderTaskEntity();
+            task.setOrderId(savedOrder.getId());
+            task.setQuantity(500);
+            task.setStatus(TaskStatus.PENDING.name());
+            task.setAttempts(0);
+            task.setMaxAttempts(3);
+            task.setCreatedAt(Instant.now());
+
+            StepVerifier.create(taskRepository.save(task))
+                .verifyComplete();
+        }
+
+        // WHEN: Worker processes tasks (on test profile, runs fast)
+        // Wait for worker to run 5+ cycles (5 seconds in test time multiplier)
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        // THEN: Check task completion
+        long completedTasks = StepVerifier.create(
+            taskRepository.findByOrderIdAndStatus(
+                savedOrder.getId(),
+                TaskStatus.COMPLETED.name()
+            ).count()
+        )
+        .assertNext(count -> assertThat(count)
+            .as("Should have completed tasks")
+            .isGreaterThan(0)
+        )
+        .returnStepVerifier()
+        .verifyComplete()
+        .then(taskRepository.findByOrderIdAndStatus(
+            savedOrder.getId(),
+            TaskStatus.COMPLETED.name()
+        ).count().blockFirst());
+
+        assertThat(metrics.getTasksCompleted())
+            .as("Metrics should track completed tasks")
+            .isGreaterThan(0);
+    }
+
+    // =========================================================================
+    // TEST 3: Orphan detection and recovery
+    // =========================================================================
+
+    @Test
+    @DisplayName("Should detect and recover orphaned tasks")
+    @Timeout(value = 45, unit = TimeUnit.SECONDS)
+    void testOrphanDetectionAndRecovery() {
+        // GIVEN: Create order with task in EXECUTING state
+        OrderEntity order = new OrderEntity();
+        order.setServiceId("spotify-plays");
+        order.setQuantity(1000);
+        order.setUsesTaskDelivery(true);
+        order.setStatus("PROCESSING");
+        order.setCreatedAt(Instant.now());
+
+        OrderEntity savedOrder = StepVerifier.create(orderRepository.save(order))
+            .assertNext(o -> assertThat(o.getId()).isNotNull())
+            .returnStepVerifier()
+            .verifyComplete()
+            .then(orderRepository.save(order).blockFirst());
+
+        // Create task in EXECUTING state older than orphan threshold
+        OrderTaskEntity orphanTask = new OrderTaskEntity();
+        orphanTask.setOrderId(savedOrder.getId());
+        orphanTask.setQuantity(1000);
+        orphanTask.setStatus(TaskStatus.EXECUTING.name());
+        orphanTask.setAttempts(1);
+        orphanTask.setMaxAttempts(3);
+        orphanTask.setCreatedAt(Instant.now().minusSeconds(180)); // 3 minutes ago
+        orphanTask.setExecutionStartedAt(Instant.now().minusSeconds(180)); // Simulate old start
+
+        StepVerifier.create(taskRepository.save(orphanTask))
+            .verifyComplete();
+
+        // WHEN: Worker runs and detects orphan
+        try {
+            Thread.sleep(3000); // Let worker process
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        // THEN: Task should be recovered (status changed or retry incremented)
+        StepVerifier.create(
+            taskRepository.findById(orphanTask.getId())
+                .map(t -> {
+                    // Task should have been reclaimed/retried
+                    assertThat(t.getAttempts())
+                        .as("Task attempts should increment after orphan recovery")
+                        .isGreaterThan(1);
+                    return t;
+                })
+        )
+        .verifyComplete();
+
+        // Verify metrics
+        assertThat(metrics.getTasksOrphansRecovered())
+            .as("Should record orphan recovery")
+            .isGreaterThan(0);
+    }
+
+    // =========================================================================
+    // TEST 4: Invariant validation
+    // =========================================================================
+
+    @Test
+    @DisplayName("Should maintain quantity invariant (completed + failed = total)")
+    @Timeout(value = 60, unit = TimeUnit.SECONDS)
+    void testQuantityInvariant() {
+        // GIVEN: Create order and tasks
+        final int TOTAL_QTY = 1500;
+        final int TASK_QTY = 500;
+
+        OrderEntity order = new OrderEntity();
+        order.setServiceId("spotify-plays");
+        order.setQuantity(TOTAL_QTY);
+        order.setUsesTaskDelivery(true);
+        order.setStatus("PROCESSING");
+        order.setCreatedAt(Instant.now());
+
+        OrderEntity savedOrder = StepVerifier.create(orderRepository.save(order))
+            .assertNext(o -> assertThat(o.getId()).isNotNull())
+            .returnStepVerifier()
+            .verifyComplete()
+            .then(orderRepository.save(order).blockFirst());
+
+        // Create 3 tasks
+        for (int i = 0; i < 3; i++) {
+            OrderTaskEntity task = new OrderTaskEntity();
+            task.setOrderId(savedOrder.getId());
+            task.setQuantity(TASK_QTY);
+            task.setStatus(TaskStatus.PENDING.name());
+            task.setAttempts(0);
+            task.setMaxAttempts(3);
+            task.setCreatedAt(Instant.now());
+
+            StepVerifier.create(taskRepository.save(task))
+                .verifyComplete();
+        }
+
+        // Wait for execution
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        // WHEN: Check invariant via GET /api/orders/{id}
+        webTestClient.get()
+            .uri("/api/orders/" + savedOrder.getId())
+            .exchange()
+            .expectStatus().isOk()
+            .expectBody(OrderEntity.class)
+            .returnResult()
+            .getResponseBody();
+
+        // THEN: Calculate completion
+        long completedQty = StepVerifier.create(
+            taskRepository.findByOrderIdAndStatus(
+                savedOrder.getId(),
+                TaskStatus.COMPLETED.name()
+            )
+            .map(OrderTaskEntity::getQuantity)
+            .reduce(0, Integer::sum)
+        )
+        .returnStepVerifier()
+        .verifyComplete()
+        .then(
+            taskRepository.findByOrderIdAndStatus(
+                savedOrder.getId(),
+                TaskStatus.COMPLETED.name()
+            )
+            .map(OrderTaskEntity::getQuantity)
+            .reduce(0, Integer::sum)
+            .blockFirst()
+        ).longValue();
+
+        // Verify: completed quantity <= total quantity
+        assertThat(completedQty)
+            .as("Completed quantity must not exceed total")
+            .isLessThanOrEqualTo(TOTAL_QTY);
+    }
+
+    // =========================================================================
+    // TEST 5: Worker status monitoring
+    // =========================================================================
+
+    @Test
+    @DisplayName("Should expose worker metrics via /actuator/metrics")
+    void testMetricsExposition() {
+        webTestClient.get()
+            .uri("/actuator/metrics/orders.total")
+            .exchange()
+            .expectStatus().isOk()
+            .expectBody(String.class)
+            .returnResult()
+            .getResponseBody();
+
+        webTestClient.get()
+            .uri("/actuator/metrics/delivery.latency")
+            .exchange()
+            .expectStatus().isOk();
+
+        webTestClient.get()
+            .uri("/actuator/metrics/proxy.healthy")
+            .exchange()
+            .expectStatus().isOk();
+    }
+
+    // =========================================================================
+    // TEST 6: Failure injection (test profile only)
+    // =========================================================================
+
+    @Test
+    @DisplayName("Should support failure injection for chaos testing")
+    void testFailureInjectionControl() {
+        // Verify chaos endpoints exist in test profile
+        webTestClient.post()
+            .uri("/api/admin/chaos/enable")
+            .exchange()
+            .expectStatus().isOk();
+
+        webTestClient.post()
+            .uri("/api/admin/chaos/pause")
+            .exchange()
+            .expectStatus().isOk();
+
+        webTestClient.post()
+            .uri("/api/admin/chaos/resume")
+            .exchange()
+            .expectStatus().isOk();
+    }
+}

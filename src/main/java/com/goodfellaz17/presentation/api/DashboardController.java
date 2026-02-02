@@ -14,9 +14,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Dashboard Controller - Revenue metrics and analytics.
- * 
+ *
  * PRODUCTION: Uses real Neon PostgreSQL for revenue tracking.
- * 
+ *
  * Provides real-time business metrics:
  * - Total revenue (today/all-time)
  * - Order counts
@@ -31,23 +31,23 @@ public class DashboardController {
     private final RoutingEngine routingEngine;
     private final BotzzzUserProxyPool userProxyPool;
     private final OrderRepository orderRepository;
-    
+
     // In-memory cache (synced from DB periodically)
     private final AtomicReference<BigDecimal> totalRevenue = new AtomicReference<>(BigDecimal.ZERO);
     private final AtomicReference<BigDecimal> todayRevenue = new AtomicReference<>(BigDecimal.ZERO);
     private final AtomicInteger totalOrders = new AtomicInteger(0);
     private final AtomicInteger todayOrders = new AtomicInteger(0);
     private final AtomicInteger totalPlaysDelivered = new AtomicInteger(0);
-    private LocalDate lastResetDate = LocalDate.now();
+    private final AtomicReference<LocalDate> lastResetDate = new AtomicReference<>(LocalDate.now());
 
     public DashboardController(
-            RoutingEngine routingEngine, 
+            RoutingEngine routingEngine,
             BotzzzUserProxyPool userProxyPool,
             OrderRepository orderRepository) {
         this.routingEngine = routingEngine;
         this.userProxyPool = userProxyPool;
         this.orderRepository = orderRepository;
-        
+
         // Load initial values from DB
         loadFromDatabase();
     }
@@ -60,7 +60,7 @@ public class DashboardController {
         resetDailyCountersIfNeeded();
         loadFromDatabase(); // Refresh from DB
         ProxyStrategy.AggregateStats stats = routingEngine.getStats();
-        
+
         return new DashboardResponse(
             totalRevenue.get(),
             todayRevenue.get(),
@@ -77,7 +77,7 @@ public class DashboardController {
 
     /**
      * Load metrics from Neon PostgreSQL.
-     * 
+     *
      * TODO: Temporary stub - totalDelivered() and findTodayOrders() not implemented.
      * This is a compilation fix only; real analytics logic to be added post-freeze.
      */
@@ -88,19 +88,19 @@ public class DashboardController {
             if (dbRevenue != null) {
                 totalRevenue.set(dbRevenue);
             }
-            
+
             // TODO: totalDelivered() not implemented - using zero for now
             // Integer delivered = orderRepository.totalDelivered().block();
             // totalPlaysDelivered.set(delivered != null ? delivered : 0);
-            
+
             // TODO: findTodayOrders() not implemented - using ordersToday() instead
             Long todayCount = orderRepository.ordersToday().block();
             todayOrders.set(todayCount != null ? todayCount.intValue() : 0);
-            
+
             // Total orders
             Long total = orderRepository.count().block();
             totalOrders.set(total != null ? total.intValue() : 0);
-            
+
         } catch (Exception e) {
             // Silently use cached values if DB unavailable
         }
@@ -112,11 +112,11 @@ public class DashboardController {
      */
     public void recordRevenue(int quantity, BigDecimal ratePerThousand) {
         resetDailyCountersIfNeeded();
-        
+
         BigDecimal revenue = ratePerThousand
             .multiply(BigDecimal.valueOf(quantity))
             .divide(BigDecimal.valueOf(1000), 2, java.math.RoundingMode.HALF_UP);
-        
+
         totalRevenue.updateAndGet(v -> v.add(revenue));
         todayRevenue.updateAndGet(v -> v.add(revenue));
         totalOrders.incrementAndGet();
@@ -130,11 +130,11 @@ public class DashboardController {
     @GetMapping("/capacity")
     public CapacityResponse capacity() {
         ProxyStrategy.AggregateStats stats = routingEngine.getStats();
-        
+
         double utilizationPercent = stats.totalCapacity() > 0
             ? (double) (stats.totalCapacity() - stats.totalRemaining()) / stats.totalCapacity() * 100
             : 0;
-        
+
         return new CapacityResponse(
             stats.totalSources(),
             stats.enabledSources(),
@@ -151,11 +151,11 @@ public class DashboardController {
     @GetMapping("/revenue")
     public RevenueResponse revenue() {
         resetDailyCountersIfNeeded();
-        
+
         // Estimated breakdown (production: track per-source)
         BigDecimal userArbitrageRevenue = todayRevenue.get().multiply(new BigDecimal("0.60")); // 60% free
         BigDecimal paidProxyRevenue = todayRevenue.get().multiply(new BigDecimal("0.40"));     // 40% paid
-        
+
         return new RevenueResponse(
             totalRevenue.get(),
             todayRevenue.get(),
@@ -172,7 +172,7 @@ public class DashboardController {
     @GetMapping("/live")
     public LiveMetrics liveMetrics() {
         ProxyStrategy.AggregateStats stats = routingEngine.getStats();
-        
+
         return new LiveMetrics(
             stats.totalActiveLeases(),
             userProxyPool.getBusyUserCount(),
@@ -184,10 +184,14 @@ public class DashboardController {
 
     private void resetDailyCountersIfNeeded() {
         LocalDate today = LocalDate.now();
-        if (!today.equals(lastResetDate)) {
-            todayRevenue.set(BigDecimal.ZERO);
-            todayOrders.set(0);
-            lastResetDate = today;
+        LocalDate lastReset = lastResetDate.get();
+
+        if (!today.equals(lastReset)) {
+            // Only reset if we successfully updated the date (atomic operation)
+            if (lastResetDate.compareAndSet(lastReset, today)) {
+                todayRevenue.set(BigDecimal.ZERO);
+                todayOrders.set(0);
+            }
         }
     }
 

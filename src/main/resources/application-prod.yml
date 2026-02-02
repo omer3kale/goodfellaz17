@@ -2,7 +2,7 @@
 # GOODFELLAZ17 - Production Configuration
 # ============================================
 # Activate: SPRING_PROFILES_ACTIVE=prod
-# 
+#
 # Database: Neon PostgreSQL (EU-Central-1 for Aachen latency)
 # MontiCore SMI: Symbol Tables + CoCos enabled
 
@@ -48,6 +48,53 @@ goodfellaz17:
     cocos:
       order-quantity: true       # Min/max validation
       spotify-drip: true         # 5% spike prevention
+
+# ============================================
+# PRODUCTION GUARD RAILS - 15k Order Hardening
+# ============================================
+app:
+  safety:
+    maxConcurrentOrders: 15              # Circuit breaker threshold
+    rateLimit:
+      enabled: true
+      ordersPerMinute: 15               # 15 orders per minute max
+    minHealthyProxies: 20               # Alert if below this
+    minHealthyAccounts: 300             # Alert if below this
+
+  # Time compression DISABLED in production (1.0x multiplier)
+  time:
+    multiplier: 1.0
+
+  # Failure injection DISABLED in production
+  failureInjection:
+    enabled: false
+
+  # Metrics export
+  metrics:
+    prometheus:
+      enabled: true
+    export:
+      interval: 60s
+
+# ============================================
+# Actuator - Disable chaos endpoints in prod
+# ============================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus,info
+        exclude: env,configprops,chaosembeds
+
+  # Prometheus scrape endpoint
+  metrics:
+    distribution:
+      percentiles-histogram:
+        delivery.latency: true
+        task.execution.time: true
+    tags:
+      application: goodfellaz17
+      environment: production
       api-key-balance: true      # Balance check
       track-url: true            # URL validation
     prettyprinter:
@@ -56,7 +103,7 @@ goodfellaz17:
   # ============================================
   # 15K DELIVERY SYSTEM - PRODUCTION CONFIGURATION
   # ============================================
-  # 
+  #
   # CRITICAL: These settings enforce production safety!
   # Time multiplier is 1 (REAL timing)
   # Chaos injection is BLOCKED
@@ -64,23 +111,28 @@ goodfellaz17:
   delivery:
     # NO time compression in production!
     time-multiplier: 1
-    
+
     # Task sizing
     target-task-size: 400
     min-task-size: 300
     max-task-size: 500
-    
+
     # Production thresholds
     orphan-threshold-seconds: 120     # 2 minutes
     retry-backoff-base-seconds: 30    # 30 second base
     max-retry-attempts: 3
-    
+
   worker:
     # Production worker timing
     interval-ms: 10000                # Every 10 seconds
     batch-size: 50
     worker-id-prefix: "prod-worker"
-    
+
+  spotify:
+    adapter: real                      # Use SpotifyRealAdapter (prod execution)
+    timeout-seconds: 300               # 5 min per play
+    max-retries: 3                     # Exponential backoff: 2s→4s→8s
+
   chaos:
     # CHAOS IS BLOCKED IN PRODUCTION
     available: false
@@ -114,29 +166,19 @@ arbitrage:
   task-timeout-seconds: 300      # 5 min task timeout
   rate-per-thousand: 0.50        # $0.50 per 1K plays
 
-# ============================================
-# Spring Actuator / Prometheus (Lehrstuhl Metrics)
-# ============================================
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,metrics,prometheus,info,cocos,symbols
-      base-path: /actuator
-  endpoint:
-    health:
-      show-details: when_authorized
-      probes:
-        enabled: true
-  metrics:
-    export:
-      prometheus:
-        enabled: true
-    tags:
-      application: goodfellaz17
-    distribution:
-      percentiles-histogram:
-        http.server.requests: true
+healthcheck:
+  probes:
+    enabled: true
+
+metrics:
+  export:
+    prometheus:
+      enabled: true
+  tags:
+    application: goodfellaz17
+  distribution:
+    percentiles-histogram:
+      http.server.requests: true
 
 # ============================================
 # Logging (Production)

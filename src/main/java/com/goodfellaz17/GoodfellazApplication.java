@@ -8,6 +8,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.context.annotation.Bean;
 
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
+
 /**
  * GOODFELLAZ17 Provider - Spring Boot 3.5 Application.
  *
@@ -22,9 +25,16 @@ import org.springframework.context.annotation.Bean;
  * @author RWTH Research Project
  */
 @SpringBootApplication
+@ComponentScan(
+    basePackages = "com.goodfellaz17",
+    excludeFilters = @ComponentScan.Filter(
+        type = FilterType.REGEX,
+        pattern = "com\\.goodfellaz17\\.account\\..*"
+    )
+)
 @EnableAsync
 @EnableScheduling
-@EnableR2dbcRepositories
+@EnableR2dbcRepositories(basePackages = {"com.goodfellaz17.infrastructure.persistence", "com.goodfellaz17.account.service", "com.goodfellaz17.order.repository"})
 public class GoodfellazApplication {
 
     public static void main(String[] args) {

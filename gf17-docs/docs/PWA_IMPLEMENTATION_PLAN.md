@@ -362,6 +362,7 @@ body, p, span {
 ### Current API (Reference Only)
 
 The existing backend exposes:
+
 ```
 POST /api/v2?action=services    → List services
 POST /api/v2?action=add         → Place order
