@@ -26,6 +26,7 @@ import com.goodfellaz17.domain.port.OrderRepositoryPort;
 
 @SpringBootTest
 @ActiveProfiles("test")
+@SuppressWarnings("deprecation") // @MockBean needed for Spring context injection
 public class PerformanceBenchmark {
 
     @Autowired

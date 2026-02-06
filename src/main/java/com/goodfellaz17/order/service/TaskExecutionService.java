@@ -36,7 +36,7 @@ public class TaskExecutionService {
     private final PlayOrderTaskRepository taskRepository;
 
     @Value("${task.proxy-node:local-executor}")
-    private String assignedProxyNode;
+    private String assignedProxyNode = "local-executor";  // Default for tests
 
     public TaskExecutionService(
         SpotifyPlayPort spotifyPlayPort,

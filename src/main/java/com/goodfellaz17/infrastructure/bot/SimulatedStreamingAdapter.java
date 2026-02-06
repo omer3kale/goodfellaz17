@@ -3,7 +3,8 @@ package com.goodfellaz17.infrastructure.bot;
 import com.goodfellaz17.domain.model.Proxy;
 import com.goodfellaz17.domain.model.StreamResult;
 import com.goodfellaz17.domain.port.StreamingAdapter;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -15,10 +16,10 @@ import java.util.Random;
  * Simulated implementation of StreamingAdapter for thesis evaluation.
  * Models realistic behavior WITHOUT real network calls.
  */
-@Slf4j
 @Service
 @Profile({"test", "simulated"})
 public class SimulatedStreamingAdapter implements StreamingAdapter {
+    private static final Logger log = LoggerFactory.getLogger(SimulatedStreamingAdapter.class);
 
     private final Random random = new Random();
 

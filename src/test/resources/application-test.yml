@@ -1,25 +1,96 @@
-# Test configuration for Testcontainers
-# Note: R2DBC connection is auto-configured by @ServiceConnection from Testcontainers
+# =============================================================================
+# GOODFELLAZ17 - Test Profile Configuration
+# =============================================================================
+#
+# This profile runs tests against LOCAL PostgreSQL only.
+# NO Neon connection. NO H2 mocks.
+#
+# Prerequisites:
+#   docker compose -f docker-compose.test-db.yml up -d
+#
+# Usage:
+#   mvn test -Dspring.profiles.active=test
+#   mvn test -Dtest=ReactiveStreamingIntegrationTest -Dspring.profiles.active=test
+#
+# =============================================================================
 
 spring:
   main:
     allow-bean-definition-overriding: true
-  flyway:
-    enabled: false
+    lazy-initialization: false
+
+  # ==========================================================================
+  # LOCAL POSTGRESQL FOR TESTS (not H2, not Neon)
+  # ==========================================================================
   r2dbc:
-    url: r2dbc:h2:mem:///testdb;DB_CLOSE_DELAY=-1
-    username: sa
-    password: ""
+    url: r2dbc:postgresql://localhost:55432/goodfellaz17_test
+    username: testuser
+    password: testpass
+    pool:
+      initial-size: 2
+      max-size: 20
+      max-idle-time: 30s
+
+  # Schema managed by Docker entrypoint init.sql
   sql:
     init:
       mode: never
+  flyway:
+    enabled: false
 
-# Disable proxy system for tests
+# =============================================================================
+# LOGGING - Quieter for test runs
+# =============================================================================
+
+logging:
+  level:
+    root: WARN
+    com.goodfellaz17: INFO
+    org.springframework.r2dbc: WARN
+    io.r2dbc.postgresql: WARN
+
+# =============================================================================
+# DISABLE EXTERNAL SERVICES FOR TESTS
+# =============================================================================
+
 proxy:
+  brightdata:
+    enabled: false
+  soax:
+    enabled: false
   hybrid:
     enabled: false
 
-# Disable background task executor for tests (runs manually in unit tests)
 app:
+  proxy:
+    enabled: false
   task-executor:
     enabled: false
+
+# =============================================================================
+# BOT CONFIGURATION - Reduced for tests
+# =============================================================================
+
+bot:
+  executor:
+    max-concurrent: 5
+  proxies:
+    provider: MOCK
+
+# =============================================================================
+# DELIVERY SYSTEM - Fast timeouts for tests
+# =============================================================================
+
+goodfellaz17:
+  delivery:
+    time-multiplier: 1000
+    orphan-threshold-seconds: 5
+    retry-backoff-base-seconds: 1
+  worker:
+    interval-ms: 100
+    batch-size: 10
+  chaos:
+    available: false
+  production-guards:
+    enforce-real-timing: false
+    block-chaos-injection: true

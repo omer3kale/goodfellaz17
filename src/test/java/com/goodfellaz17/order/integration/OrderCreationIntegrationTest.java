@@ -5,6 +5,7 @@ import com.goodfellaz17.order.repository.PlayOrderTaskRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -15,8 +16,12 @@ import static org.junit.jupiter.api.Assertions.*;
  * Integration tests for Order Creation endpoint.
  * Uses real PostgreSQL database via Testcontainers.
  * Tests the complete flow: HTTP request → R2DBC persistence → metrics aggregation.
+ *
+ * Requires Docker. Skip with SKIP_DOCKER_TESTS=true
  */
 @DisplayName("Order Creation Integration Tests")
+@DisabledIfEnvironmentVariable(named = "SKIP_DOCKER_TESTS", matches = "true")
+@SuppressWarnings("null") // Reactive .block() null handling is intentional in tests
 public class OrderCreationIntegrationTest extends IntegrationTestBase {
 
     @Autowired

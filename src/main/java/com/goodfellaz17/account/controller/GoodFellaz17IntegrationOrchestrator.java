@@ -1,35 +1,34 @@
 package com.goodfellaz17.account.controller;
 
-import com.goodfellaz17.account.service.GmailAccountCreator;
-import com.goodfellaz17.account.service.SpotifyAccountCreator;
-import com.goodfellaz17.account.service.SpotifyAccount;
-import com.goodfellaz17.account.service.SpotifyAccountRepository;
-import lombok.extern.slf4j.Slf4j;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
-import reactor.core.publisher.Flux;
+
+import com.goodfellaz17.account.service.SpotifyAccount;
+import com.goodfellaz17.account.service.SpotifyAccountCreator;
+import com.goodfellaz17.account.service.SpotifyAccountRepository;
+
 import reactor.core.publisher.Mono;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.CompletableFuture;
-
-@Slf4j
 @RestController
 @RequestMapping("/api/accounts")
 @Service
-@Profile("accounts")  // Disabled for streaming demo - enable with SPRING_PROFILES_ACTIVE=accounts
+@Profile("accounts") // Disabled for streaming demo - enable with SPRING_PROFILES_ACTIVE=accounts
 public class GoodFellaz17IntegrationOrchestrator {
 
-    @Autowired
-    private GmailAccountCreator gmailAccountCreator;
+    private static final Logger log = LoggerFactory.getLogger(GoodFellaz17IntegrationOrchestrator.class);
 
     @Autowired
     private SpotifyAccountCreator spotifyAccountCreator;
@@ -37,7 +36,7 @@ public class GoodFellaz17IntegrationOrchestrator {
     @Autowired
     private SpotifyAccountRepository spotifyAccountRepository;
 
-    @Autowired
+    @Autowired(required = false)
     private RestTemplate restTemplate;
 
     // Configuration constants for account pool management
@@ -58,7 +57,9 @@ public class GoodFellaz17IntegrationOrchestrator {
                     int total = accounts.size();
                     long created = accounts.stream().filter(a -> "CREATED".equals(a.getStatus())).count();
                     long active = accounts.stream().filter(a -> "ACTIVE".equals(a.getStatus())).count();
-                    long failed = accounts.stream().filter(a -> "DEGRADED".equals(a.getStatus()) || "BANNED".equals(a.getStatus())).count();
+                    long failed = accounts.stream()
+                            .filter(a -> "DEGRADED".equals(a.getStatus()) || "BANNED".equals(a.getStatus()))
+                            .count();
 
                     status.put("totalAccounts", total);
                     status.put("createdAccounts", created);
@@ -80,17 +81,17 @@ public class GoodFellaz17IntegrationOrchestrator {
     public ResponseEntity<Map<String, String>> createAccountNow() {
         Map<String, String> response = new HashMap<>();
         try {
-            CompletableFuture<SpotifyAccount> gmail = gmailAccountCreator.createGmxAccount();
-            CompletableFuture<SpotifyAccount> spotify = spotifyAccountCreator.processNextPendingGmxAccount();
+            CompletableFuture<SpotifyAccount> spotify =
+                    spotifyAccountCreator.processNextPendingGmxAccount();
 
-            // Wait for both to complete
-            CompletableFuture.allOf(gmail, spotify).join();
+            // Wait for completion (propagates runtime failures)
+            spotify.join();
 
             response.put("status", "success");
             response.put("message", "Account creation triggered");
-            log.info("Manual account creation triggered");
+            log.info("Manual Spotify account creation triggered");
             return ResponseEntity.ok(response);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("Failed to create account on demand", e);
             response.put("status", "error");
             response.put("message", e.getMessage());
@@ -121,8 +122,9 @@ public class GoodFellaz17IntegrationOrchestrator {
                     health.put("bannedAccounts", banned);
                     health.put("totalAccounts", total);
                     health.put("healthScore", String.format("%.2f%%", healthScore));
-                    health.put("poolStatus", healthy >= HEALTHY_POOL_SIZE ? "OPTIMAL" :
-                                            healthy >= CRITICAL_POOL_SIZE ? "WARNING" : "CRITICAL");
+                    health.put("poolStatus",
+                            healthy >= HEALTHY_POOL_SIZE ? "OPTIMAL"
+                                    : healthy >= CRITICAL_POOL_SIZE ? "WARNING" : "CRITICAL");
                     health.put("creationRate", calculateCreationRate(accounts));
                     health.put("timestamp", LocalDateTime.now());
 
@@ -151,10 +153,9 @@ public class GoodFellaz17IntegrationOrchestrator {
                     return ResponseEntity.ok(response);
                 })
                 .defaultIfEmpty(ResponseEntity.ok(Map.of(
-                    "available", false,
-                    "message", "No active accounts available",
-                    "timestamp", LocalDateTime.now()
-                )));
+                        "available", false,
+                        "message", "No active accounts available",
+                        "timestamp", LocalDateTime.now())));
     }
 
     /**
@@ -176,7 +177,14 @@ public class GoodFellaz17IntegrationOrchestrator {
             response.put("message", "Order acknowledged");
 
             return ResponseEntity.ok(response);
-        } catch (Exception e) {
+        } catch (ClassCastException | NullPointerException e) {
+            // Malformed payload (wrong types or missing fields) -> treat as bad request
+            log.warn("Invalid order webhook payload: {}", orderData, e);
+            response.put("status", "error");
+            response.put("message", "Invalid order payload");
+            return ResponseEntity.badRequest().body(response);
+        } catch (RuntimeException e) {
+            // Unexpected runtime failure
             log.error("Failed to process order webhook", e);
             response.put("status", "error");
             response.put("message", e.getMessage());
@@ -206,17 +214,10 @@ public class GoodFellaz17IntegrationOrchestrator {
                     metrics.append("# TYPE spotify_accounts_active gauge\n");
                     metrics.append("spotify_accounts_active ").append(active).append("\n");
 
-                    metrics.append("# HELP gmail_creator_metrics Gmail creator metrics\n");
-                    metrics.append("# TYPE gmail_creator_metrics gauge\n");
-                    gmailAccountCreator.getMetrics().forEach((k, v) ->
-                        metrics.append("gmail_creator_").append(k).append(" ").append(v).append("\n")
-                    );
-
                     metrics.append("# HELP spotify_creator_metrics Spotify creator metrics\n");
                     metrics.append("# TYPE spotify_creator_metrics gauge\n");
-                    spotifyAccountCreator.getMetrics().forEach((k, v) ->
-                        metrics.append("spotify_creator_").append(k).append(" ").append(v).append("\n")
-                    );
+                    spotifyAccountCreator.getMetrics().forEach(
+                            (k, v) -> metrics.append("spotify_creator_").append(k).append(" ").append(v).append("\n"));
 
                     return ResponseEntity.ok(metrics.toString());
                 });
@@ -232,14 +233,14 @@ public class GoodFellaz17IntegrationOrchestrator {
         try {
             spotifyAccountRepository.findAll()
                     .doOnNext(account -> {
-                        // Simulate health check logic
                         if (shouldMarkDegraded(account)) {
                             account.setStatus("DEGRADED");
                             spotifyAccountRepository.save(account).subscribe();
                         }
                     })
                     .subscribe();
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
+            // Safety net: log but do not crash scheduler
             log.error("Account health monitoring failed", e);
         }
     }
@@ -262,18 +263,21 @@ public class GoodFellaz17IntegrationOrchestrator {
 
                         Map<String, Object> payload = new HashMap<>();
                         payload.put("timestamp", LocalDateTime.now());
-                        payload.put("healthyAccounts", accounts.stream().filter(a -> "ACTIVE".equals(a.getStatus())).count());
-                        payload.put("availableAccounts", accounts.stream().filter(a -> "ACTIVE".equals(a.getStatus())).count());
+                        long healthy = accounts.stream().filter(a -> "ACTIVE".equals(a.getStatus())).count();
+                        payload.put("healthyAccounts", healthy);
+                        payload.put("availableAccounts", healthy);
                         payload.put("totalAccounts", accounts.size());
 
                         try {
                             restTemplate.postForObject(WEBHOOK_URL, payload, String.class);
                             log.info("Metrics sent successfully to webhook");
-                        } catch (Exception e) {
+                        } catch (RestClientException e) {
+                            // HTTP or client-side error on webhook call
                             log.warn("Failed to send metrics to webhook", e);
                         }
                     });
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
+            // Safety net around reactive pipeline setup
             log.error("Metrics webhook task failed", e);
         }
     }
@@ -281,6 +285,9 @@ public class GoodFellaz17IntegrationOrchestrator {
     /**
      * Background task: Auto-trigger account creation if pool is low
      * Runs every 5 minutes
+     *
+     * NOTE: GMX-based automatic creation has been removed.
+     * This now only logs pool status; creation pipeline is handled elsewhere.
      */
     @Scheduled(fixedRate = 300000)
     public void autoTriggerAccountCreation() {
@@ -293,35 +300,24 @@ public class GoodFellaz17IntegrationOrchestrator {
 
                         if (activeCount < HEALTHY_POOL_SIZE) {
                             log.warn("Account pool below healthy threshold: {} < {}", activeCount, HEALTHY_POOL_SIZE);
-                            try {
-                                gmailAccountCreator.createGmxAccount().thenAccept(account ->
-                                    log.info("Auto-triggered Gmail account creation")
-                                ).exceptionally(e -> {
-                                    log.error("Auto-trigger failed", e);
-                                    return null;
-                                });
-                            } catch (Exception e) {
-                                log.error("Failed to trigger account creation", e);
-                            }
                         }
 
                         if (activeCount < CRITICAL_POOL_SIZE) {
-                            log.error("CRITICAL: Account pool critically low: {} < {}", activeCount, CRITICAL_POOL_SIZE);
-                            // FIXED: Trigger emergency account creation
-                            createEmergencyAccounts(5).subscribe();
+                            log.error("CRITICAL: Account pool critically low: {} < {}", activeCount,
+                                    CRITICAL_POOL_SIZE);
                         }
                     });
-        } catch (Exception e) {
-            log.error("Auto-trigger account creation failed", e);
+        } catch (RuntimeException e) {
+            log.error("Auto-trigger account creation check failed", e);
         }
     }
 
     // Helper methods
 
     private int countCreatedToday(java.util.List<SpotifyAccount> accounts) {
-        LocalDateTime today = LocalDateTime.now().minusDays(1);
+        LocalDateTime since = LocalDateTime.now().minusDays(1);
         return (int) accounts.stream()
-                .filter(a -> a.getCreatedAt().isAfter(today))
+                .filter(a -> a.getCreatedAt().isAfter(since))
                 .count();
     }
 
@@ -336,45 +332,34 @@ public class GoodFellaz17IntegrationOrchestrator {
     private int calculateRiskScore(SpotifyAccount account) {
         int score = 0;
 
-        // Newer accounts = higher risk
         LocalDateTime createdTime = account.getCreatedAt();
-        if (createdTime.isAfter(LocalDateTime.now().minusHours(24))) {
+        LocalDateTime now = LocalDateTime.now();
+
+        if (createdTime.isAfter(now.minusHours(24))) {
             score += 40;
-        } else if (createdTime.isAfter(LocalDateTime.now().minusDays(7))) {
+        } else if (createdTime.isAfter(now.minusDays(7))) {
             score += 25;
-        } else if (createdTime.isAfter(LocalDateTime.now().minusDays(30))) {
+        } else if (createdTime.isAfter(now.minusDays(30))) {
             score += 10;
         }
 
-        // Account status
-        if ("PENDING_EMAIL_VERIFICATION".equals(account.getStatus())) {
-            score += 20;
-        } else if ("ACTIVE".equals(account.getStatus())) {
-            score += 0;
-        } else if ("DEGRADED".equals(account.getStatus())) {
-            score += 50;
+        String status = account.getStatus();
+        if (status != null) {
+            switch (status) {
+                case "PENDING_EMAIL_VERIFICATION" -> score += 20;
+                case "ACTIVE" -> score += 0;
+                case "DEGRADED" -> score += 50;
+                default -> score += 0;
+            }
         }
 
         return Math.min(score, 100);
     }
 
     private boolean shouldMarkDegraded(SpotifyAccount account) {
-        // Implement actual health check logic
-        // For now, mark as degraded if no plays in 24 hours
         if (account.getLastPlayedAt() != null) {
             return account.getLastPlayedAt().isBefore(LocalDateTime.now().minusHours(24));
         }
         return false;
-    }
-
-    private Mono<Void> createEmergencyAccounts(int count) {
-        log.info("🚨 EMERGENCY: Creating {} accounts to restore pool health", count);
-        return Flux.range(0, count)
-                .flatMap(i -> {
-                    CompletableFuture<SpotifyAccount> future = gmailAccountCreator.createGmxAccount();
-                    return Mono.fromFuture(future);
-                })
-                .doOnNext(account -> log.info("Emergency account created: {}", account.getEmail()))
-                .then();
     }
 }

@@ -1,29 +1,5 @@
 package com.goodfellaz17.application.worker;
 
-import com.goodfellaz17.infrastructure.metrics.DeliveryMetrics;
-import com.goodfellaz17.application.testing.FailureInjectionService;
-import com.goodfellaz17.domain.model.generated.*;
-import com.goodfellaz17.infrastructure.proxy.ProxyExecutorClient;
-import com.goodfellaz17.infrastructure.persistence.OrderProgressUpdater;
-import com.goodfellaz17.infrastructure.persistence.generated.GeneratedOrderRepository;
-import com.goodfellaz17.infrastructure.persistence.generated.OrderTaskRepository;
-import com.goodfellaz17.infrastructure.proxy.generated.HybridProxyRouterV2;
-import com.goodfellaz17.infrastructure.proxy.generated.HybridProxyRouterV2.ProxySelection;
-import com.goodfellaz17.infrastructure.proxy.generated.HybridProxyRouterV2.RoutingRequest;
-import com.goodfellaz17.infrastructure.proxy.generated.HybridProxyRouterV2.ProxyResult;
-import com.goodfellaz17.infrastructure.proxy.generated.HybridProxyRouterV2.OperationType;
-import io.micrometer.core.instrument.Timer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.reactive.TransactionalOperator;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import reactor.util.retry.Retry;
-
 import java.net.InetAddress;
 import java.time.Duration;
 import java.time.Instant;
@@ -31,6 +7,31 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.reactive.TransactionalOperator;
+
+import com.goodfellaz17.application.testing.FailureInjectionService;
+import com.goodfellaz17.domain.model.generated.OrderEntity;
+import com.goodfellaz17.domain.model.generated.OrderStatus;
+import com.goodfellaz17.domain.model.generated.OrderTaskEntity;
+import com.goodfellaz17.domain.model.generated.TaskStatus;
+import com.goodfellaz17.infrastructure.persistence.OrderProgressUpdater;
+import com.goodfellaz17.infrastructure.persistence.generated.GeneratedOrderRepository;
+import com.goodfellaz17.infrastructure.persistence.generated.OrderTaskRepository;
+import com.goodfellaz17.infrastructure.proxy.ProxyExecutorClient;
+import com.goodfellaz17.infrastructure.proxy.generated.HybridProxyRouterV2;
+import com.goodfellaz17.infrastructure.proxy.generated.HybridProxyRouterV2.OperationType;
+import com.goodfellaz17.infrastructure.proxy.generated.HybridProxyRouterV2.ProxyResult;
+import com.goodfellaz17.infrastructure.proxy.generated.HybridProxyRouterV2.ProxySelection;
+import com.goodfellaz17.infrastructure.proxy.generated.HybridProxyRouterV2.RoutingRequest;
+
+import reactor.core.publisher.Mono;
 
 /**
  * OrderDeliveryWorker - The heart of the 15k delivery guarantee.
@@ -313,6 +314,19 @@ public class OrderDeliveryWorker {
      * Otherwise (simulated mode):
      * - Uses Mono.delay() to simulate execution
      * - Used for thesis tests and when proxy infra unavailable
+     *
+     * TODO Phase 3: Get real duration from ProxyExecutorClient
+     * Ticket: GF17-234 - Add durationMs to ExecutionResult
+     * When ProxyExecutorClient.ExecutionResult includes durationMs field:
+     * 1. Replace Duration.ofMillis(SIMULATED_EXECUTION_MS) with Duration.ofMillis(result.durationMs())
+     * 2. Log actual proxy latency for metrics:
+     *    log.info("PROXY_LATENCY | taskId={} | proxyId={} | durationMs={}", taskId, proxyId, result.durationMs())
+     * 3. Track per-proxy performance in ProxyMetrics:
+     *    proxyMetrics.recordLatency(proxyId, result.durationMs())
+     * 4. Add circuit breaker for slow proxies (>5000ms)
+     *
+     * @see ProxyExecutorClient for real proxy execution
+     * @see FailureInjectionService for chaos testing hooks
      */
     private Mono<DeliveryResult> executeDelivery(OrderTaskEntity task, ProxySelection proxy) {
         log.info("TASK_EXECUTING | taskId={} | orderId={} | seq={} | qty={} | proxy={}",
@@ -352,12 +366,14 @@ public class OrderDeliveryWorker {
                     if (!result.success()) {
                         throw new RuntimeException("Proxy execution failed: " + result.message());
                     }
+                    // TODO Phase 3 [GF17-234]: Replace SIMULATED_EXECUTION_MS with result.durationMs()
+                    // when ProxyExecutorClient.ExecutionResult adds durationMs field
                     return new DeliveryResult(
                         task.getId(),
                         result.plays(),
                         true,
                         proxy.proxyId(),
-                        Duration.ofMillis(SIMULATED_EXECUTION_MS) // TODO: Get real duration
+                        Duration.ofMillis(SIMULATED_EXECUTION_MS)
                     );
                 });
         }
@@ -522,16 +538,6 @@ public class OrderDeliveryWorker {
                         }).then();
                     });
             }));
-    }
-
-    /**
-     * Increment order's failed_permanent_plays count atomically.
-     * @deprecated Use incrementOrderFailedPermanentAndRefund instead
-     */
-    @Deprecated
-    private Mono<Void> incrementOrderFailedPermanent(UUID orderId, int failedPlays) {
-        return progressUpdater.atomicIncrementFailedPermanent(orderId, failedPlays)
-            .then();
     }
 
     /**

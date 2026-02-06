@@ -5,9 +5,6 @@ import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.checkout.Session;
 import com.stripe.param.checkout.SessionCreateParams;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,7 +19,7 @@ import java.util.Map;
 
 /**
  * Checkout Controller - Stripe payments for balance top-up.
- * 
+ *
  * POST /api/checkout/create-session → Stripe checkout URL
  * POST /api/checkout/webhook → Stripe webhook (balance credit)
  */
@@ -52,14 +49,14 @@ public class CheckoutController {
     @PostConstruct
     public void init() {
         Stripe.apiKey = stripeSecretKey;
-        log.info("Stripe initialized with key: {}...", 
+        log.info("Stripe initialized with key: {}...",
             stripeSecretKey.length() > 10 ? stripeSecretKey.substring(0, 10) : "NOT_SET");
     }
 
     /**
      * POST /api/checkout/create-session
      * Create a Stripe checkout session for balance top-up.
-     * 
+     *
      * @param apiKey Customer's API key
      * @param amount Amount in USD to add to balance
      * @return Stripe checkout URL
@@ -68,7 +65,7 @@ public class CheckoutController {
     public Mono<ResponseEntity<Map<String, Object>>> createCheckoutSession(
             @RequestParam String apiKey,
             @RequestParam BigDecimal amount) {
-        
+
         log.info("Creating checkout session for {} amount ${}", apiKey, amount);
 
         // Validate
@@ -124,7 +121,7 @@ public class CheckoutController {
 
                     Session session = Session.create(params);
 
-                    log.info("Created Stripe session {} for {} amount ${}", 
+                    log.info("Created Stripe session {} for {} amount ${}",
                         session.getId(), apiKey, amount);
 
                     return Mono.just(ResponseEntity.ok(Map.<String, Object>of(
@@ -152,7 +149,7 @@ public class CheckoutController {
     public Mono<ResponseEntity<String>> handleWebhook(
             @RequestBody String payload,
             @RequestHeader("Stripe-Signature") String sigHeader) {
-        
+
         log.info("Received Stripe webhook");
 
         try {
@@ -198,7 +195,7 @@ public class CheckoutController {
             @RequestParam String apiKey,
             @RequestParam BigDecimal amount,
             @RequestParam(defaultValue = "admin_secret_change_me") String adminKey) {
-        
+
         // Simple admin key check (replace with proper auth in production)
         if (!"admin_secret_change_me".equals(adminKey)) {
             return Mono.just(ResponseEntity.status(403).body(Map.of(

@@ -49,16 +49,24 @@ spring:
   main:
     allow-bean-definition-overriding: true
 
+  # ==========================================================================
+  # LOCAL POSTGRESQL (docker-compose.test-db.yml or docker-compose.local.yml)
+  # ==========================================================================
+  # Start DB first: docker compose -f docker-compose.test-db.yml up -d
+  # Then run app:   mvn spring-boot:run -Dspring.profiles.active=local
+
   r2dbc:
-    # IMPORTANT: Use service name 'postgres' when running Spring Boot in docker-compose.
-    # Use 'localhost:55432' only when running Spring Boot from host (matches docker-compose.local.yml port mapping).
-    # docker-compose.local.yml uses POSTGRES_PASSWORD: Mariogomez33Strong
-    url: r2dbc:postgresql://localhost:55432/goodfellaz17
-    username: goodfellaz17
-    password: Mariogomez33Strong
+    url: r2dbc:postgresql://localhost:55432/goodfellaz17_test
+    username: testuser
+    password: testpass
     pool:
       initial-size: 2
       max-size: 10
+
+  # SQL initialization - schema created by init.sql in Docker entrypoint
+  sql:
+    init:
+      mode: never  # Schema handled by Docker init script
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # LOGGING CONFIGURATION

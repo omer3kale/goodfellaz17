@@ -9,6 +9,7 @@ import com.goodfellaz17.domain.model.Proxy;
 import com.goodfellaz17.infrastructure.proxy.generated.HybridProxyRouterV2;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -20,8 +21,16 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import reactor.core.publisher.Mono;
 
+/**
+ * Unit test for ReactiveStreamingService.
+ *
+ * NOTE: This test requires Spring Boot context which may need Docker for Testcontainers.
+ * Disabled when SKIP_DOCKER_TESTS=true or when Docker is unavailable.
+ */
 @SpringBootTest
 @ActiveProfiles("test")
+@DisabledIfEnvironmentVariable(named = "SKIP_DOCKER_TESTS", matches = "true")
+@SuppressWarnings("deprecation") // @MockBean needed for Spring context injection
 public class ReactiveStreamingUnitTest {
 
     @Autowired

@@ -64,10 +64,10 @@ public interface OrderRepository extends ReactiveCrudRepository<OrderEntity, UUI
      */
     @Modifying
     @Query("""
-        UPDATE orders SET 
+        UPDATE orders SET
             charged_count = :deliveredQuantity,
             remaining_count = quantity - :deliveredQuantity,
-            updated_at = NOW() 
+            updated_at = NOW()
         WHERE order_id = :orderId
         """)
     Mono<Integer> updateProgress(UUID orderId, int progress, int deliveredQuantity);
@@ -77,8 +77,8 @@ public interface OrderRepository extends ReactiveCrudRepository<OrderEntity, UUI
      */
     @Modifying
     @Query("""
-        UPDATE orders SET 
-            status = 'Completed', 
+        UPDATE orders SET
+            status = 'Completed',
             charged_count = quantity,
             remaining_count = 0,
             updated_at = NOW()
@@ -132,27 +132,43 @@ public interface OrderRepository extends ReactiveCrudRepository<OrderEntity, UUI
     Mono<Long> completedOrderCount();
 
     /**
+     * Total plays delivered (sum of charged_count across all orders).
+     */
+    @Query("SELECT COALESCE(SUM(charged_count), 0) FROM orders")
+    Mono<Integer> totalDelivered();
+
+    /**
      * Orders completed within 24h (estimate based on eta_minutes).
      */
     @Query("""
-        SELECT COUNT(*) FROM orders 
-        WHERE status = 'Completed' 
-        AND eta_minutes IS NOT NULL 
+        SELECT COUNT(*) FROM orders
+        WHERE status = 'Completed'
+        AND eta_minutes IS NOT NULL
         AND eta_minutes < 1440
         """)
     Mono<Long> ordersCompletedWithin24h();
 
     /**
      * Top service IDs by order count.
+     * Returns service_id and order count for top N services.
      */
     @Query("""
-        SELECT service_id, COUNT(*) as cnt 
-        FROM orders 
-        GROUP BY service_id 
-        ORDER BY cnt DESC 
+        SELECT service_id, COUNT(*) as order_count
+        FROM orders
+        WHERE status IN ('Completed', 'Processing')
+        GROUP BY service_id
+        ORDER BY order_count DESC
         LIMIT :limit
         """)
-    Flux<Object[]> topServicesByOrderCount(int limit);
+    Flux<ServiceOrderCount> topServicesByOrderCount(int limit);
+
+    /**
+     * Projection interface for service order count results.
+     */
+    interface ServiceOrderCount {
+        Integer getServiceId();
+        Long getOrderCount();
+    }
 
     // ==================== ATOMIC DELIVERY UPDATE ====================
     // NOTE: Atomic increment operations moved to OrderProgressUpdater service

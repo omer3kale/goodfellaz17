@@ -1,8 +1,10 @@
 package com.goodfellaz17.domain.port;
 
+import org.springframework.stereotype.Service;
+
 import com.goodfellaz17.domain.model.Proxy;
 import com.goodfellaz17.domain.model.StreamResult;
-import org.springframework.stereotype.Service;
+
 import reactor.core.publisher.Mono;
 
 /**

@@ -5,7 +5,6 @@ import com.goodfellaz17.application.service.TaskGenerationService;
 import com.goodfellaz17.application.worker.OrderDeliveryWorker;
 import com.goodfellaz17.domain.model.generated.OrderEntity;
 import com.goodfellaz17.domain.model.generated.OrderTaskEntity;
-import com.goodfellaz17.domain.model.generated.TaskStatus;
 import com.goodfellaz17.infrastructure.persistence.generated.GeneratedOrderRepository;
 import com.goodfellaz17.infrastructure.persistence.generated.OrderTaskRepository;
 import org.slf4j.Logger;
@@ -22,28 +21,28 @@ import java.util.UUID;
 
 /**
  * Admin API for monitoring and managing 15k order delivery.
- * 
+ *
  * Provides endpoints for:
  * - Order progress tracking
  * - Failed task inspection (dead-letter queue)
  * - Worker metrics
  * - Capacity status
- * 
+ *
  * @author goodfellaz17
  * @since 1.0.0
  */
 @RestController
 @RequestMapping("/api/admin")
 public class AdminOrderProgressController {
-    
+
     private static final Logger log = LoggerFactory.getLogger(AdminOrderProgressController.class);
-    
+
     private final GeneratedOrderRepository orderRepository;
     private final OrderTaskRepository taskRepository;
     private final OrderDeliveryWorker deliveryWorker;
     private final CapacityService capacityService;
     private final TaskGenerationService taskGenerationService;
-    
+
     public AdminOrderProgressController(
             GeneratedOrderRepository orderRepository,
             OrderTaskRepository taskRepository,
@@ -56,14 +55,14 @@ public class AdminOrderProgressController {
         this.capacityService = capacityService;
         this.taskGenerationService = taskGenerationService;
     }
-    
+
     // =========================================================================
     // ORDER PROGRESS
     // =========================================================================
-    
+
     /**
      * GET /api/admin/orders/{id}/progress
-     * 
+     *
      * Get detailed progress for a specific order including:
      * - Delivered plays
      * - Task breakdown
@@ -73,27 +72,27 @@ public class AdminOrderProgressController {
     @GetMapping("/orders/{orderId}/progress")
     public Mono<ResponseEntity<OrderProgressResponse>> getOrderProgress(
             @PathVariable UUID orderId) {
-        
+
         return orderRepository.findById(orderId)
-            .flatMap(order -> 
+            .flatMap(order ->
                 taskRepository.getProgressSummary(orderId)
                     .defaultIfEmpty(createEmptyProgress(orderId))
                     .map(summary -> buildProgressResponse(order, summary)))
             .map(ResponseEntity::ok)
             .defaultIfEmpty(ResponseEntity.notFound().build());
     }
-    
+
     /**
      * GET /api/admin/orders/{id}/tasks
-     * 
+     *
      * Get all tasks for an order with their status.
      */
     @GetMapping("/orders/{orderId}/tasks")
     public Mono<ResponseEntity<OrderTasksResponse>> getOrderTasks(
             @PathVariable UUID orderId) {
-        
+
         return orderRepository.findById(orderId)
-            .flatMap(order -> 
+            .flatMap(order ->
                 taskRepository.findByOrderIdOrderBySequenceNumberAsc(orderId)
                     .map(this::mapTask)
                     .collectList()
@@ -107,18 +106,18 @@ public class AdminOrderProgressController {
             .map(ResponseEntity::ok)
             .defaultIfEmpty(ResponseEntity.notFound().build());
     }
-    
+
     /**
      * GET /api/admin/orders/{id}/failed-tasks
-     * 
+     *
      * Get permanently failed tasks for an order (dead-letter queue).
      */
     @GetMapping("/orders/{orderId}/failed-tasks")
     public Mono<ResponseEntity<FailedTasksResponse>> getFailedTasks(
             @PathVariable UUID orderId) {
-        
+
         return orderRepository.findById(orderId)
-            .flatMap(order -> 
+            .flatMap(order ->
                 taskRepository.findFailedPermanentTasksForOrder(orderId)
                     .map(this::mapFailedTask)
                     .collectList()
@@ -126,7 +125,7 @@ public class AdminOrderProgressController {
                         int failedPlays = tasks.stream()
                             .mapToInt(FailedTaskDetail::quantity)
                             .sum();
-                        
+
                         return new FailedTasksResponse(
                             orderId,
                             order.getQuantity(),
@@ -138,20 +137,20 @@ public class AdminOrderProgressController {
             .map(ResponseEntity::ok)
             .defaultIfEmpty(ResponseEntity.notFound().build());
     }
-    
+
     // =========================================================================
     // WORKER STATUS
     // =========================================================================
-    
+
     /**
      * GET /api/admin/worker/status
-     * 
+     *
      * Get current worker metrics and status.
      */
     @GetMapping("/worker/status")
     public Mono<ResponseEntity<WorkerStatusResponse>> getWorkerStatus() {
         OrderDeliveryWorker.WorkerMetrics metrics = deliveryWorker.getMetrics();
-        
+
         return taskRepository.countAllPendingTasks()
             .zipWith(taskRepository.countAllExecutingTasks())
             .map(tuple -> new WorkerStatusResponse(
@@ -172,13 +171,13 @@ public class AdminOrderProgressController {
                 Instant.now()))
             .map(ResponseEntity::ok);
     }
-    
+
     /**
      * GET /api/admin/worker/metrics
-     * 
+     *
      * Get lightweight worker metrics (no DB queries).
      * This endpoint is cheap to call frequently for monitoring.
-     * 
+     *
      * Example:
      * curl http://localhost:8080/api/admin/worker/metrics | jq .
      */
@@ -201,24 +200,24 @@ public class AdminOrderProgressController {
             Duration.between(m.workerStartTime(), Instant.now()).toSeconds()
         ));
     }
-    
+
     /**
      * GET /api/admin/orders/{orderId}/debug
-     * 
+     *
      * Get detailed debug view of an order including:
      * - Order fields (id, status, quantity, delivered, remains, timestamps)
      * - Task status counts
      * - Last 5 tasks with status and last_error
-     * 
+     *
      * Example:
      * curl http://localhost:8080/api/admin/orders/{orderId}/debug | jq .
      */
     @GetMapping("/orders/{orderId}/debug")
     public Mono<ResponseEntity<OrderDebugResponse>> getOrderDebug(
             @PathVariable UUID orderId) {
-        
+
         return orderRepository.findById(orderId)
-            .flatMap(order -> 
+            .flatMap(order ->
                 // Get task counts by status
                 taskRepository.findByOrderIdOrderBySequenceNumberAsc(orderId)
                     .collectList()
@@ -228,7 +227,7 @@ public class AdminOrderProgressController {
                             .collect(java.util.stream.Collectors.groupingBy(
                                 OrderTaskEntity::getStatus,
                                 java.util.stream.Collectors.counting()));
-                        
+
                         // Last 5 tasks (most recent by sequence)
                         List<TaskDebugInfo> lastTasks = tasks.stream()
                             .sorted((a, b) -> Integer.compare(b.getSequenceNumber(), a.getSequenceNumber()))
@@ -242,7 +241,7 @@ public class AdminOrderProgressController {
                                 t.getLastError(),
                                 t.getExecutionStartedAt()))
                             .toList();
-                        
+
                         return new OrderDebugResponse(
                             order.getId(),
                             order.getStatus(),
@@ -261,21 +260,21 @@ public class AdminOrderProgressController {
             .map(ResponseEntity::ok)
             .defaultIfEmpty(ResponseEntity.notFound().build());
     }
-    
+
     // =========================================================================
     // CAPACITY STATUS
     // =========================================================================
-    
+
     /**
      * GET /api/admin/capacity-status
-     * 
+     *
      * Get current system capacity and can-accept status.
      * Note: /api/admin/capacity is handled by CapacityAdminController for detailed capacity management.
      */
     @GetMapping("/capacity-status")
     public Mono<ResponseEntity<CapacityStatusResponse>> getCapacityStatus() {
         return capacityService.calculateCurrentCapacity()
-            .flatMap(snapshot -> 
+            .flatMap(snapshot ->
                 capacityService.calculatePendingLoad()
                     .map(pendingLoad -> new CapacityStatusResponse(
                         snapshot.totalPlaysPerHour(),
@@ -289,16 +288,16 @@ public class AdminOrderProgressController {
                         snapshot.calculatedAt())))
             .map(ResponseEntity::ok);
     }
-    
+
     /**
      * GET /api/admin/capacity/preview/{quantity}
-     * 
+     *
      * Preview task distribution for a specific quantity.
      */
     @GetMapping("/capacity/preview/{quantity}")
     public Mono<ResponseEntity<TaskDistributionPreview>> previewTaskDistribution(
             @PathVariable int quantity) {
-        
+
         return taskGenerationService.calculateTaskDistribution(quantity)
             .map(dist -> new TaskDistributionPreview(
                 quantity,
@@ -310,20 +309,20 @@ public class AdminOrderProgressController {
                 dist.rejectionReason()))
             .map(ResponseEntity::ok);
     }
-    
+
     // =========================================================================
     // GLOBAL DEAD LETTER QUEUE
     // =========================================================================
-    
+
     /**
      * GET /api/admin/dead-letter-queue
-     * 
+     *
      * Get all permanently failed tasks across all orders.
      */
     @GetMapping("/dead-letter-queue")
     public Mono<ResponseEntity<DeadLetterQueueResponse>> getDeadLetterQueue(
             @RequestParam(defaultValue = "100") int limit) {
-        
+
         return taskRepository.findAllFailedPermanentTasks(limit)
             .map(this::mapFailedTask)
             .collectList()
@@ -331,7 +330,7 @@ public class AdminOrderProgressController {
                 int totalFailedPlays = tasks.stream()
                     .mapToInt(FailedTaskDetail::quantity)
                     .sum();
-                
+
                 return new DeadLetterQueueResponse(
                     tasks.size(),
                     totalFailedPlays,
@@ -339,25 +338,25 @@ public class AdminOrderProgressController {
             })
             .map(ResponseEntity::ok);
     }
-    
+
     // =========================================================================
     // HELPERS
     // =========================================================================
-    
+
     private OrderProgressResponse buildProgressResponse(
-            OrderEntity order, 
+            OrderEntity order,
             OrderTaskRepository.TaskProgressSummary summary) {
-        
-        double progressPercent = order.getQuantity() > 0 
-            ? (double) order.getDelivered() / order.getQuantity() * 100.0 
+
+        double progressPercent = order.getQuantity() > 0
+            ? (double) order.getDelivered() / order.getQuantity() * 100.0
             : 0.0;
-        
+
         boolean onSchedule = true;
-        if (order.getEstimatedCompletionAt() != null && 
+        if (order.getEstimatedCompletionAt() != null &&
             !order.getStatus().equals("COMPLETED")) {
             onSchedule = Instant.now().isBefore(order.getEstimatedCompletionAt());
         }
-        
+
         return new OrderProgressResponse(
             order.getId(),
             order.getQuantity(),
@@ -377,7 +376,7 @@ public class AdminOrderProgressController {
             order.getCompletedAt(),
             onSchedule);
     }
-    
+
     private OrderTaskRepository.TaskProgressSummary createEmptyProgress(UUID orderId) {
         return new OrderTaskRepository.TaskProgressSummary() {
             @Override public UUID getOrderId() { return orderId; }
@@ -390,7 +389,7 @@ public class AdminOrderProgressController {
             @Override public Long getActiveTasks() { return 0L; }
         };
     }
-    
+
     private TaskDetail mapTask(OrderTaskEntity task) {
         return new TaskDetail(
             task.getId(),
@@ -404,7 +403,7 @@ public class AdminOrderProgressController {
             task.getExecutedAt(),
             task.getRetryAfter());
     }
-    
+
     private FailedTaskDetail mapFailedTask(OrderTaskEntity task) {
         return new FailedTaskDetail(
             task.getId(),
@@ -417,11 +416,11 @@ public class AdminOrderProgressController {
             task.getCreatedAt(),
             task.getExecutionStartedAt());
     }
-    
+
     // =========================================================================
     // RESPONSE DTOs
     // =========================================================================
-    
+
     public record OrderProgressResponse(
         UUID orderId,
         int totalQuantity,
@@ -441,7 +440,7 @@ public class AdminOrderProgressController {
         Instant completedAt,
         boolean onSchedule
     ) {}
-    
+
     public record OrderTasksResponse(
         UUID orderId,
         int totalQuantity,
@@ -450,7 +449,7 @@ public class AdminOrderProgressController {
         int taskCount,
         List<TaskDetail> tasks
     ) {}
-    
+
     public record TaskDetail(
         UUID id,
         int sequenceNumber,
@@ -463,7 +462,7 @@ public class AdminOrderProgressController {
         Instant executedAt,
         Instant retryAfter
     ) {}
-    
+
     public record FailedTasksResponse(
         UUID orderId,
         int totalQuantity,
@@ -472,7 +471,7 @@ public class AdminOrderProgressController {
         int failedTaskCount,
         List<FailedTaskDetail> failedTasks
     ) {}
-    
+
     public record FailedTaskDetail(
         UUID taskId,
         UUID orderId,
@@ -484,7 +483,7 @@ public class AdminOrderProgressController {
         Instant createdAt,
         Instant lastExecutionAt
     ) {}
-    
+
     public record WorkerStatusResponse(
         String workerId,
         boolean isRunning,
@@ -502,7 +501,7 @@ public class AdminOrderProgressController {
         Instant workerStartTime,
         Instant timestamp
     ) {}
-    
+
     public record CapacityStatusResponse(
         int playsPerHour,
         int max48hCapacity,
@@ -514,7 +513,7 @@ public class AdminOrderProgressController {
         boolean canAccept15k,
         Instant calculatedAt
     ) {}
-    
+
     public record TaskDistributionPreview(
         int quantity,
         boolean canAccept,
@@ -524,13 +523,13 @@ public class AdminOrderProgressController {
         double estimatedHours,
         String rejectionReason
     ) {}
-    
+
     public record DeadLetterQueueResponse(
         int totalFailedTasks,
         int totalFailedPlays,
         List<FailedTaskDetail> tasks
     ) {}
-    
+
     public record WorkerMetricsResponse(
         String workerId,
         long totalProcessed,
@@ -546,7 +545,7 @@ public class AdminOrderProgressController {
         Instant workerStartTime,
         long uptimeSeconds
     ) {}
-    
+
     public record OrderDebugResponse(
         UUID orderId,
         String status,
@@ -562,7 +561,7 @@ public class AdminOrderProgressController {
         Map<String, Long> taskStatusCounts,
         List<TaskDebugInfo> lastTasks
     ) {}
-    
+
     public record TaskDebugInfo(
         UUID taskId,
         int sequenceNumber,

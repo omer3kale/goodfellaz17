@@ -1,0 +1,152 @@
+{
+  "properties": [
+    {
+      "name": "goodfellaz17.delivery.time-multiplier",
+      "type": "java.lang.Integer",
+      "description": "Multiplier for delivery time simulation. 720x = 72 hours → 6 minutes."
+    },
+    {
+      "name": "goodfellaz17.delivery.target-task-size",
+      "type": "java.lang.Integer",
+      "description": "Target number of plays per task."
+    },
+    {
+      "name": "goodfellaz17.delivery.min-task-size",
+      "type": "java.lang.Integer",
+      "description": "Minimum plays per task."
+    },
+    {
+      "name": "goodfellaz17.delivery.max-task-size",
+      "type": "java.lang.Integer",
+      "description": "Maximum plays per task."
+    },
+    {
+      "name": "goodfellaz17.delivery.orphan-threshold-seconds",
+      "type": "java.lang.Integer",
+      "description": "Seconds after which an EXECUTING task is considered orphaned."
+    },
+    {
+      "name": "goodfellaz17.delivery.retry-backoff-base-seconds",
+      "type": "java.lang.Integer",
+      "description": "Base seconds for exponential retry backoff."
+    },
+    {
+      "name": "goodfellaz17.worker.interval-ms",
+      "type": "java.lang.Long",
+      "description": "Worker poll interval in milliseconds."
+    },
+    {
+      "name": "goodfellaz17.worker.batch-size",
+      "type": "java.lang.Integer",
+      "description": "Number of tasks to process per worker cycle."
+    },
+    {
+      "name": "goodfellaz17.worker.worker-id-prefix",
+      "type": "java.lang.String",
+      "description": "Prefix for worker instance IDs."
+    },
+    {
+      "name": "goodfellaz17.worker.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Enable/disable the delivery worker.",
+      "defaultValue": true
+    },
+    {
+      "name": "goodfellaz17.refund.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Enable refunds on permanent task failures.",
+      "defaultValue": true
+    },
+    {
+      "name": "goodfellaz17.chaos.available",
+      "type": "java.lang.Boolean",
+      "description": "Whether chaos injection endpoints are available."
+    },
+    {
+      "name": "goodfellaz17.chaos.auto-disable-after-minutes",
+      "type": "java.lang.Integer",
+      "description": "Auto-disable chaos injection after N minutes."
+    },
+    {
+      "name": "goodfellaz17.production-guards.enforce-real-timing",
+      "type": "java.lang.Boolean",
+      "description": "Enforce real timing in production (no time compression)."
+    },
+    {
+      "name": "goodfellaz17.production-guards.block-chaos-injection",
+      "type": "java.lang.Boolean",
+      "description": "Block chaos injection endpoints in production."
+    },
+    {
+      "name": "bot.executor.max-concurrent",
+      "type": "java.lang.Integer",
+      "description": "Maximum concurrent bot executions."
+    },
+    {
+      "name": "bot.accounts.farm-size",
+      "type": "java.lang.Integer",
+      "description": "Size of the Spotify account farm."
+    },
+    {
+      "name": "proxy.brightdata.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Enable BrightData proxy provider."
+    },
+    {
+      "name": "proxy.soax.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Enable SOAX proxy provider."
+    },
+    {
+      "name": "proxy.tor.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Enable Tor proxy provider."
+    },
+    {
+      "name": "proxy.machine.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Enable machine proxy provider."
+    },
+    {
+      "name": "proxy.hybrid.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Enable hybrid proxy routing strategy."
+    },
+    {
+      "name": "app.proxy.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Enable real proxy execution (vs simulation)."
+    },
+    {
+      "name": "app.proxy.base-url",
+      "type": "java.lang.String",
+      "description": "Base URL for proxy executor service."
+    },
+    {
+      "name": "app.proxy.timeout-ms",
+      "type": "java.lang.Long",
+      "description": "Timeout for proxy requests in milliseconds."
+    },
+    {
+      "name": "app.scheduler.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Enable task execution scheduler."
+    },
+    {
+      "name": "app.scheduler.poll-ms",
+      "type": "java.lang.Long",
+      "description": "Scheduler poll interval in milliseconds."
+    },
+    {
+      "name": "app.scheduler.batch-size",
+      "type": "java.lang.Integer",
+      "description": "Number of tasks per scheduler batch."
+    },
+    {
+      "name": "app.scheduler.concurrency",
+      "type": "java.lang.Integer",
+      "description": "Maximum concurrent task executions."
+    }
+  ],
+  "hints": []
+}

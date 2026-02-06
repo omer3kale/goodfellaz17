@@ -2,16 +2,18 @@ package com.goodfellaz17.presentation.api.v2;
 
 import com.goodfellaz17.application.service.ReactiveStreamingService;
 import com.goodfellaz17.domain.model.StreamResult;
-import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 
 @RestController
 @RequestMapping("/api/tasks")
-@RequiredArgsConstructor
 public class TaskDistributorController {
 
     private final ReactiveStreamingService streamingService;
+
+    public TaskDistributorController(ReactiveStreamingService streamingService) {
+        this.streamingService = streamingService;
+    }
 
     @PostMapping("/distribute")
     public Flux<StreamResult> distributeTasks(

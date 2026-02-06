@@ -4,6 +4,7 @@ import com.goodfellaz17.application.service.ReactiveStreamingService;
 import com.goodfellaz17.domain.model.StreamResult;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import reactor.test.StepVerifier;
 
@@ -11,6 +12,11 @@ import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Integration tests for reactive streaming throughput.
+ * Requires Docker. Skip with SKIP_DOCKER_TESTS=true
+ */
+@DisabledIfEnvironmentVariable(named = "SKIP_DOCKER_TESTS", matches = "true")
 public class ReactiveStreamingIntegrationTest extends IntegrationTestBase {
 
     @Autowired

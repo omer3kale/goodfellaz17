@@ -18,7 +18,7 @@ import java.util.Map;
 
 /**
  * Admin Dashboard API Controller.
- * 
+ *
  * Endpoints for admin panel:
  * - GET /api/admin/stats - Full dashboard stats
  * - GET /api/admin/revenue - Revenue metrics
@@ -75,7 +75,7 @@ public class AdminDashboardController {
         ).map(tuple -> {
             BigDecimal[] revenues = tuple.getT1();
             Long[] counts = tuple.getT2();
-            
+
             return new AdminStats(
                 revenues[0],           // totalRevenue
                 revenues[1],           // revenue30d
@@ -154,17 +154,29 @@ public class AdminDashboardController {
     }
 
     private Mono<List<AdminStats.ServiceStats>> getTopServices(int limit) {
-        // Simplified: return empty list for now, will be enhanced
-        return serviceRepository.findByIsActiveTrue()
-            .take(limit)
-            .map(service -> new AdminStats.ServiceStats(
-                service.getId(),
-                service.getName(),
-                0L,  // TODO: Add actual count
-                0.0
-            ))
+        return orderRepository.topServicesByOrderCount(limit)
+            .flatMap(count ->
+                serviceRepository.findByServiceId(count.getServiceId())
+                    .map(service -> new AdminStats.ServiceStats(
+                        service.getId(),
+                        service.getName(),
+                        count.getOrderCount(),
+                        calculateServiceRevenue(service, count.getOrderCount())
+                    ))
+            )
             .collectList()
             .defaultIfEmpty(new ArrayList<>());
+    }
+
+    /**
+     * Calculate estimated revenue for a service based on order count.
+     * Estimate: avgOrderQuantity = 5000, revenue = quantity * rate / 1000
+     */
+    private double calculateServiceRevenue(com.goodfellaz17.infrastructure.persistence.entity.ServiceEntity service, Long orderCount) {
+        if (service.getRate() == null || orderCount == null) return 0.0;
+        // Estimate: avgOrderQuantity = 5000, avgRevenue = quantity * rate / 1000
+        double avgRevenue = 5000 * service.getRate().doubleValue() / 1000;
+        return avgRevenue * orderCount;
     }
 
     private Mono<Map<String, BigDecimal>> getDailyRevenue() {

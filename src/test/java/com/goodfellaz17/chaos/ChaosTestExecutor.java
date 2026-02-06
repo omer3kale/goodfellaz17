@@ -1,7 +1,8 @@
 package com.goodfellaz17.chaos;
 
-import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -29,8 +30,8 @@ import java.util.concurrent.atomic.AtomicLong;
  * - Success rate: 95%+ (retry logic handles transient failures)
  * - Throughput: ~10 tasks/second with 5 concurrent workers
  */
-@Slf4j
 public class ChaosTestExecutor {
+    private static final Logger log = LoggerFactory.getLogger(ChaosTestExecutor.class);
 
     @Test
     public void testConcurrentOrderExecution() throws InterruptedException {

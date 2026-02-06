@@ -1,6 +1,5 @@
 package com.goodfellaz17.account.service;
 
-import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.By;
 import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.TimeoutException;
@@ -10,6 +9,8 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -32,10 +33,10 @@ import java.util.Random;
 import java.util.Map;
 import java.util.HashMap;
 
-@Slf4j
 @Service
 @Profile("accounts")
 public class SpotifyAccountCreator {
+    private static final Logger log = LoggerFactory.getLogger(SpotifyAccountCreator.class);
 
     private final AtomicInteger totalSignedUp = new AtomicInteger(0);
     private final AtomicInteger totalFailed = new AtomicInteger(0);

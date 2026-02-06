@@ -76,10 +76,7 @@ public class DashboardController {
     }
 
     /**
-     * Load metrics from Neon PostgreSQL.
-     *
-     * TODO: Temporary stub - totalDelivered() and findTodayOrders() not implemented.
-     * This is a compilation fix only; real analytics logic to be added post-freeze.
+     * Load metrics from PostgreSQL database.
      */
     private void loadFromDatabase() {
         try {
@@ -89,11 +86,11 @@ public class DashboardController {
                 totalRevenue.set(dbRevenue);
             }
 
-            // TODO: totalDelivered() not implemented - using zero for now
-            // Integer delivered = orderRepository.totalDelivered().block();
-            // totalPlaysDelivered.set(delivered != null ? delivered : 0);
+            // Total plays delivered across all orders
+            Integer delivered = orderRepository.totalDelivered().block();
+            totalPlaysDelivered.set(delivered != null ? delivered : 0);
 
-            // TODO: findTodayOrders() not implemented - using ordersToday() instead
+            // Orders created today
             Long todayCount = orderRepository.ordersToday().block();
             todayOrders.set(todayCount != null ? todayCount.intValue() : 0);
 

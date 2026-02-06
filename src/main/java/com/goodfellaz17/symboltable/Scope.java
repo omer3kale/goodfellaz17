@@ -3,7 +3,8 @@ package com.goodfellaz17.symboltable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * MontiCore-inspired Scope implementation.
@@ -19,8 +20,8 @@ import lombok.extern.slf4j.Slf4j;
  *
  * @see <a href="https://monticore.de">MontiCore Reference Manual</a>
  */
-@Slf4j
 public class Scope {
+    private static final Logger log = LoggerFactory.getLogger(Scope.class);
 
     private final String name;
     private Scope enclosingScope;

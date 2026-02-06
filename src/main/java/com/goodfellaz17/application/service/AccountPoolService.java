@@ -2,17 +2,20 @@ package com.goodfellaz17.application.service;
 
 import com.goodfellaz17.account.service.SpotifyAccount;
 import com.goodfellaz17.account.service.SpotifyAccountRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class AccountPoolService {
+    private static final Logger log = LoggerFactory.getLogger(AccountPoolService.class);
 
     private final SpotifyAccountRepository accountRepo;
+
+    public AccountPoolService(SpotifyAccountRepository accountRepo) {
+        this.accountRepo = accountRepo;
+    }
 
     public Mono<SpotifyAccount> getAvailableAccount() {
         // Find least used account with ACTIVE status and under daily limit (50 streams)

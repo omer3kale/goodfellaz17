@@ -3,24 +3,35 @@
 # ============================================
 # Activate: SPRING_PROFILES_ACTIVE=prod
 #
-# Database: Neon PostgreSQL (EU-Central-1 for Aachen latency)
-# MontiCore SMI: Symbol Tables + CoCos enabled
+# Database: Neon PostgreSQL (us-east-1)
+# ONLY use this profile in production deployments!
 
 spring:
   application:
     name: goodfellaz17-provider
 
-  # Neon PostgreSQL R2DBC (EU-Central-1 for low latency)
-  # Migration: Supabase → Neon (pg_dump restore)
+  # ==========================================================================
+  # NEON POSTGRESQL - Production Database
+  # ==========================================================================
+  # This is the ONLY profile that connects to Neon.
+  # Dev/test profiles use local PostgreSQL instead.
+
   r2dbc:
-    url: r2dbc:postgresql://${NEON_HOST:ep-xxx.eu-central-1.aws.neon.tech}:5432/${NEON_DB:goodfellaz17}?sslmode=require
-    username: ${NEON_USER:goodfellaz17}
-    password: ${NEON_PASSWORD}
+    url: r2dbc:postgresql://ep-cold-sunset-a4rlwslr-pooler.us-east-1.aws.neon.tech:5432/neondb?sslmode=require
+    username: ${NEON_USER:neondb_owner}
+    password: ${NEON_PASSWORD:npg_UqY4uNws0BEK}
     pool:
       initial-size: 5
-      max-size: 20           # Neon connection pooling
+      max-size: 20
       max-idle-time: 30m
       max-create-connection-time: 30s
+    properties:
+      sslMode: REQUIRE
+
+  # Schema managed externally (Neon console or migrations)
+  sql:
+    init:
+      mode: never
 
   # JPA/Hibernate validation only (schema managed externally)
   jpa:

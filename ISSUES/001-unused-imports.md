@@ -76,13 +76,13 @@ mvn compile -DskipTests
 - **Automated:** Can be fixed with IDE tools
 
 ## Checklist
-- [ ] AdminOrderProgressController.java - Remove TaskStatus import
-- [ ] CheckoutController.java - Remove Swagger imports
-- [ ] CustomerDashboardController.java - Remove ApiKeyEntity import
-- [ ] PublicApiController.java - Remove Instant import
-- [ ] GeneratedDeviceNodeRepository.java - Remove Instant import
-- [ ] ServiceEntity.java - Remove List import
-- [ ] OrderOrchestratorTest.java - Remove Instant import
-- [ ] CapacityAdminController.java - Remove CapacitySnapshot/CanAcceptResult imports
-- [ ] CapacityService.java - Remove OrderEntity/Flux imports
-- [ ] GoodFellaz17IntegrationTest.java - Remove HybridProxyRouterV2 import
+- [x] AdminOrderProgressController.java - Remove TaskStatus import ✓ FIXED
+- [x] CheckoutController.java - Remove Swagger imports ✓ FIXED
+- [x] CustomerDashboardController.java - VERIFIED: ApiKeyEntity IS USED (false positive)
+- [x] PublicApiController.java - Remove Instant import ✓ FIXED
+- [ ] GeneratedDeviceNodeRepository.java - FILE NOT FOUND (may have been deleted/renamed)
+- [ ] ServiceEntity.java - VERIFIED: Instant IS USED for createdAt field (false positive)
+- [x] OrderOrchestratorTest.java - Remove Instant import ✓ FIXED
+- [x] CapacityAdminController.java - VERIFIED: Imports ARE USED (false positive)
+- [x] CapacityService.java - Remove OrderEntity/Flux imports ✓ FIXED
+- [ ] GoodFellaz17IntegrationTest.java - FILE NOT FOUND (may have been deleted/renamed)

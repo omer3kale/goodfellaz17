@@ -1,0 +1,51 @@
+version: '3.8'
+# =============================================================================
+# GOODFELLAZ17 - Local Test Database
+# =============================================================================
+#
+# Purpose: Fast, isolated PostgreSQL for local development and test runs.
+#
+# Usage:
+#   docker compose -f docker-compose.test-db.yml up -d
+#   mvn test -Dspring.profiles.active=test
+#
+# Port: 55432 (avoids collision with macOS Homebrew Postgres on 5432)
+#
+# Connection String:
+#   r2dbc:postgresql://localhost:55432/goodfellaz17_test
+#   jdbc:postgresql://localhost:55432/goodfellaz17_test (for Flyway/JDBC)
+#
+# =============================================================================
+
+services:
+  postgres-test:
+    image: postgres:16-alpine
+    container_name: goodfellaz17-postgres-test
+    environment:
+      POSTGRES_DB: goodfellaz17_test
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "55432:5432"
+    volumes:
+      # Initialize schema on first start
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testuser -d goodfellaz17_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    # Optimize for test performance (not durability)
+    command: >
+      postgres
+      -c fsync=off
+      -c synchronous_commit=off
+      -c full_page_writes=off
+      -c max_connections=100
+      -c shared_buffers=256MB
+      -c work_mem=16MB
+    tmpfs:
+      - /var/lib/postgresql/data  # RAM disk for speed
+
+# No persistent volume - each `docker compose down -v` resets DB

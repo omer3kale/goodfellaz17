@@ -1,16 +1,18 @@
 package com.goodfellaz17.infrastructure.bot;
 
-import com.goodfellaz17.domain.model.Proxy;
-import com.goodfellaz17.domain.model.StreamResult;
-import com.goodfellaz17.domain.port.StreamingAdapter;
+import java.time.Duration;
+import java.util.Map;
+
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
 
-import java.time.Duration;
-import java.util.Map;
+import com.goodfellaz17.domain.model.Proxy;
+import com.goodfellaz17.domain.model.StreamResult;
+import com.goodfellaz17.domain.port.StreamingAdapter;
+
+import reactor.core.publisher.Mono;
 
 @Service
 @Primary

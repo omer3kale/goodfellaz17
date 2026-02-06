@@ -1,7 +1,5 @@
 package com.goodfellaz17.domain.service;
 
-import lombok.Builder;
-import lombok.Data;
 import org.springframework.stereotype.Service;
 
 import java.util.Random;
@@ -12,14 +10,46 @@ public class BehaviorEngine {
     private static final int MAX_STREAM_DURATION = 180000; // 3min
     private final Random random = new Random();
 
-    @Data
-    @Builder
     public static class StreamBehavior {
         private int duration;
         private int seekCount;
         private int pauseCount;
         private int volumeChanges;
         private int delayBefore;
+
+        public StreamBehavior(int duration, int seekCount, int pauseCount, int volumeChanges, int delayBefore) {
+            this.duration = duration;
+            this.seekCount = seekCount;
+            this.pauseCount = pauseCount;
+            this.volumeChanges = volumeChanges;
+            this.delayBefore = delayBefore;
+        }
+
+        public int getDuration() { return duration; }
+        public int getSeekCount() { return seekCount; }
+        public int getPauseCount() { return pauseCount; }
+        public int getVolumeChanges() { return volumeChanges; }
+        public int getDelayBefore() { return delayBefore; }
+
+        public static StreamBehaviorBuilder builder() { return new StreamBehaviorBuilder(); }
+
+        public static class StreamBehaviorBuilder {
+            private int duration;
+            private int seekCount;
+            private int pauseCount;
+            private int volumeChanges;
+            private int delayBefore;
+
+            public StreamBehaviorBuilder duration(int duration) { this.duration = duration; return this; }
+            public StreamBehaviorBuilder seekCount(int seekCount) { this.seekCount = seekCount; return this; }
+            public StreamBehaviorBuilder pauseCount(int pauseCount) { this.pauseCount = pauseCount; return this; }
+            public StreamBehaviorBuilder volumeChanges(int volumeChanges) { this.volumeChanges = volumeChanges; return this; }
+            public StreamBehaviorBuilder delayBefore(int delayBefore) { this.delayBefore = delayBefore; return this; }
+
+            public StreamBehavior build() {
+                return new StreamBehavior(duration, seekCount, pauseCount, volumeChanges, delayBefore);
+            }
+        }
     }
 
     public StreamBehavior generateBehavior() {
