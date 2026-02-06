@@ -73,35 +73,6 @@ curl -X POST http://localhost:8080/api/tasks/distribute?totalStreams=15000&track
 
 # Verify Performance
 mvn test -Dtest=PerformanceBenchmark
-```
-
-## 🚀 Quick Start
-
-### 1-Click Deploy (Render.com - FREE)
-
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
-
-```bash
-# Environment variables needed:
-SPRING_PROFILES_ACTIVE=prod
-NEON_HOST=your-db.neon.tech
-NEON_USER=your_user
-NEON_PASSWORD=your_password
-```
-
-### Docker (Local)
-
-```bash
-docker-compose -f docker-compose.demo.yml up
-# → http://localhost:8080
-```
-
-### Maven (Development)
-
-```bash
-mvn spring-boot:run -Dspring-boot.run.profiles=dev
-mvn test  # 56 tests passing
-```
 
 ## 🏗️ Architecture Overview
 
