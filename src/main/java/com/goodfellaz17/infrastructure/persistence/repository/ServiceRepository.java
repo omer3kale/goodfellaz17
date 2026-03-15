@@ -2,50 +2,42 @@ package com.goodfellaz17.infrastructure.persistence.repository;
 
 import com.goodfellaz17.infrastructure.persistence.entity.ServiceEntity;
 import org.springframework.data.r2dbc.repository.Query;
-import org.springframework.data.repository.reactive.ReactiveCrudRepository;
+import org.springframework.data.r2dbc.repository.R2dbcRepository;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.UUID;
+
 /**
- * Service Repository - Package catalog.
- * R2DBC reactive repository for services table.
+ * ServiceRepository — Reactive CRUD for services table.
  */
 @Repository
-public interface ServiceRepository extends ReactiveCrudRepository<ServiceEntity, Integer> {
+public interface ServiceRepository extends R2dbcRepository<ServiceEntity, UUID> {
 
     /**
-     * Find by service_id (integer PK).
+     * Find service by code (e.g., 'spotify_plays', 'spotify_followers').
      */
-    @Query("SELECT * FROM services WHERE service_id = :serviceId")
-    Mono<ServiceEntity> findByServiceId(Integer serviceId);
+    Mono<ServiceEntity> findByCode(String code);
 
     /**
-     * Find all active services (all services are active in current schema).
+     * Find all active/inactive services.
      */
-    @Query("SELECT * FROM services ORDER BY rate ASC")
-    Flux<ServiceEntity> findByIsActiveTrue();
+    Flux<ServiceEntity> findByActive(Boolean active);
 
     /**
-     * Find by category.
+     * Find service by ID (convenience method).
      */
-    Flux<ServiceEntity> findByCategory(String category);
+    @Query("SELECT * FROM services WHERE id = :id")
+    Mono<ServiceEntity> findByIdQuery(UUID id);
+
+    /**
+     * Count services by active status.
+     */
+    Mono<Long> countByActive(Boolean active);
 
     /**
      * Count all services.
      */
-    @Query("SELECT COUNT(*) FROM services")
-    Mono<Long> countByIsActiveTrue();
-
-    /**
-     * Find all ordered by rate (price).
-     */
-    @Query("SELECT * FROM services ORDER BY rate ASC")
-    Flux<ServiceEntity> findAllActiveOrderedByPrice();
-
-    /**
-     * Find all ordered by category then rate.
-     */
-    @Query("SELECT * FROM services ORDER BY category, rate ASC")
-    Flux<ServiceEntity> findAllActiveOrderedByCategoryAndPrice();
+    Mono<Long> count();
 }

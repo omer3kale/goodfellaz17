@@ -9,127 +9,157 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Order Entity - Core tracking.
- * Maps to orders table for R2DBC.
- * Matches existing Neon schema exactly.
+ * OrderEntity — R2DBC mapping for orders table (V15 MSSQL schema).
+ * Represents a top-level customer order for streaming delivery.
+ * Status progression: PENDING → ACTIVE → DELIVERING → COMPLETED/FAILED
  */
 @Table("orders")
 public class OrderEntity {
 
     @Id
-    @Column("order_id")
-    private UUID orderId;
+    @Column("id")
+    private UUID id;
 
-    @Column("api_key")
-    private String apiKey;
+    @Column("tenant_id")
+    private UUID tenantId;
 
     @Column("service_id")
-    private Integer serviceId;
+    private UUID serviceId;
 
-    @Column("link")
-    private String link;
+    @Column("created_by_api_key_id")
+    private UUID createdByApiKeyId;
+
+    @Column("track_id")
+    private String trackId;
+
+    @Column("artist_id")
+    private String artistId;
 
     @Column("quantity")
     private Integer quantity;
 
-    @Column("charged")
-    private BigDecimal charged;
+    @Column("price_tier_id")
+    private UUID priceTierId;
+
+    @Column("estimated_cost")
+    private BigDecimal estimatedCost;
+
+    @Column("actual_cost")
+    private BigDecimal actualCost;
 
     @Column("status")
-    private String status;
+    private String status; // PENDING, ACTIVE, DELIVERING, COMPLETED, FAILED
 
-    @Column("charged_count")
-    private Integer chargedCount;
+    @Column("status_changed_at")
+    private Instant statusChangedAt;
 
-    @Column("remaining_count")
-    private Integer remainingCount;
+    @Column("plays_delivered")
+    private Integer playsDelivered;
 
-    @Column("start_date")
-    private Instant startDate;
+    @Column("plays_failed")
+    private Integer playsFailed;
 
-    @Column("eta_minutes")
-    private Integer etaMinutes;
-
-    @Column("proxy_pool")
-    private String proxyPool;
+    @Column("failure_reason")
+    private String failureReason;
 
     @Column("created_at")
     private Instant createdAt;
 
-    @Column("updated_at")
-    private Instant updatedAt;
+    @Column("started_at")
+    private Instant startedAt;
 
-    // Default constructor for R2DBC
-    public OrderEntity() {}
+    @Column("completed_at")
+    private Instant completedAt;
 
-    public OrderEntity(String apiKey, Integer serviceId, String link, 
-                       Integer quantity, BigDecimal charged, String status) {
-        this.orderId = UUID.randomUUID();
-        this.apiKey = apiKey;
-        this.serviceId = serviceId;
-        this.link = link;
-        this.quantity = quantity;
-        this.charged = charged;
-        this.status = status;
-        this.chargedCount = 0;
-        this.remainingCount = quantity;
-        this.createdAt = Instant.now();
-        this.updatedAt = Instant.now();
+    @Column("metadata")
+    private String metadata;
+
+    // ── Constructors ────────────────────────────────────
+
+    public OrderEntity() {
     }
 
-    // Getters and Setters
-    public UUID getOrderId() { return orderId; }
-    public UUID getId() { return orderId; }  // Alias for compatibility
-    public void setOrderId(UUID orderId) { this.orderId = orderId; }
+    public OrderEntity(UUID tenantId, UUID serviceId, Integer quantity) {
+        this.id = UUID.randomUUID();
+        this.tenantId = tenantId;
+        this.serviceId = serviceId;
+        this.quantity = quantity;
+        this.status = "PENDING";
+        this.playsDelivered = 0;
+        this.playsFailed = 0;
+        this.createdAt = Instant.now();
+        this.statusChangedAt = Instant.now();
+    }
 
-    public String getApiKey() { return apiKey; }
-    public void setApiKey(String apiKey) { this.apiKey = apiKey; }
+    // ── Getters & Setters ────────────────────────────────────
 
-    public Integer getServiceId() { return serviceId; }
-    public void setServiceId(Integer serviceId) { this.serviceId = serviceId; }
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
 
-    public String getLink() { return link; }
-    public void setLink(String link) { this.link = link; }
+    public UUID getTenantId() { return tenantId; }
+    public void setTenantId(UUID tenantId) { this.tenantId = tenantId; }
+
+    public UUID getServiceId() { return serviceId; }
+    public void setServiceId(UUID serviceId) { this.serviceId = serviceId; }
+
+    public UUID getCreatedByApiKeyId() { return createdByApiKeyId; }
+    public void setCreatedByApiKeyId(UUID createdByApiKeyId) { this.createdByApiKeyId = createdByApiKeyId; }
+
+    public String getTrackId() { return trackId; }
+    public void setTrackId(String trackId) { this.trackId = trackId; }
+
+    public String getArtistId() { return artistId; }
+    public void setArtistId(String artistId) { this.artistId = artistId; }
 
     public Integer getQuantity() { return quantity; }
     public void setQuantity(Integer quantity) { this.quantity = quantity; }
 
-    public BigDecimal getCharged() { return charged; }
-    public void setCharged(BigDecimal charged) { this.charged = charged; }
+    public UUID getPriceTierId() { return priceTierId; }
+    public void setPriceTierId(UUID priceTierId) { this.priceTierId = priceTierId; }
+
+    public BigDecimal getEstimatedCost() { return estimatedCost; }
+    public void setEstimatedCost(BigDecimal estimatedCost) { this.estimatedCost = estimatedCost; }
+
+    public BigDecimal getActualCost() { return actualCost; }
+    public void setActualCost(BigDecimal actualCost) { this.actualCost = actualCost; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
 
-    public Integer getChargedCount() { return chargedCount; }
-    public void setChargedCount(Integer chargedCount) { this.chargedCount = chargedCount; }
+    public Instant getStatusChangedAt() { return statusChangedAt; }
+    public void setStatusChangedAt(Instant statusChangedAt) { this.statusChangedAt = statusChangedAt; }
 
-    public Integer getRemainingCount() { return remainingCount; }
-    public void setRemainingCount(Integer remainingCount) { this.remainingCount = remainingCount; }
+    public Integer getPlaysDelivered() { return playsDelivered; }
+    public void setPlaysDelivered(Integer playsDelivered) { this.playsDelivered = playsDelivered; }
 
-    public Instant getStartDate() { return startDate; }
-    public Instant getStartedAt() { return startDate; }  // Alias
-    public void setStartDate(Instant startDate) { this.startDate = startDate; }
+    public Integer getPlaysFailed() { return playsFailed; }
+    public void setPlaysFailed(Integer playsFailed) { this.playsFailed = playsFailed; }
 
-    public Integer getEtaMinutes() { return etaMinutes; }
-    public void setEtaMinutes(Integer etaMinutes) { this.etaMinutes = etaMinutes; }
-
-    public String getProxyPool() { return proxyPool; }
-    public void setProxyPool(String proxyPool) { this.proxyPool = proxyPool; }
+    public String getFailureReason() { return failureReason; }
+    public void setFailureReason(String failureReason) { this.failureReason = failureReason; }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 
-    public Instant getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+    public Instant getStartedAt() { return startedAt; }
+    public void setStartedAt(Instant startedAt) { this.startedAt = startedAt; }
 
-    // Computed properties for dashboard compatibility
-    public Integer getProgress() {
-        if (quantity == null || quantity == 0) return 0;
-        int delivered = chargedCount != null ? chargedCount : 0;
-        return (delivered * 100) / quantity;
-    }
+    public Instant getCompletedAt() { return completedAt; }
+    public void setCompletedAt(Instant completedAt) { this.completedAt = completedAt; }
 
-    public Integer getDeliveredQuantity() {
-        return chargedCount != null ? chargedCount : 0;
+    public String getMetadata() { return metadata; }
+    public void setMetadata(String metadata) { this.metadata = metadata; }
+
+    @Override
+    public String toString() {
+        return "OrderEntity{" +
+                "id=" + id +
+                ", tenantId=" + tenantId +
+                ", serviceId=" + serviceId +
+                ", quantity=" + quantity +
+                ", status='" + status + '\'' +
+                ", playsDelivered=" + playsDelivered +
+                ", createdAt=" + createdAt +
+                '}';
     }
 }

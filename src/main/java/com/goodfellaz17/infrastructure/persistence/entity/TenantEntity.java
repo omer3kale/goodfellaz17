@@ -4,16 +4,17 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Service Entity (MSSQL) — Maps to services table.
+ * Tenant Entity (MSSQL) — Maps to tenants table.
  * 
- * Represents a delivery service type (PLAYS, FOLLOWERS, ENGAGEMENT, etc.).
+ * Represents a customer organization for multi-tenant isolation.
  */
-@Table("services")
-public class ServiceEntity {
+@Table("tenants")
+public class TenantEntity {
 
     @Id
     @Column("id")
@@ -25,17 +26,14 @@ public class ServiceEntity {
     @Column("name")
     private String name;
 
-    @Column("description")
-    private String description;
+    @Column("contact_email")
+    private String contactEmail;
 
     @Column("active")
     private Boolean active;
 
-    @Column("min_quantity")
-    private Integer minQuantity;
-
-    @Column("max_quantity")
-    private Integer maxQuantity;
+    @Column("credit_balance")
+    private BigDecimal creditBalance;
 
     @Column("created_at")
     private Instant createdAt;
@@ -45,19 +43,16 @@ public class ServiceEntity {
 
     // ── Constructors ────────────────────────────────────
 
-    public ServiceEntity() {
+    public TenantEntity() {
     }
 
-    public ServiceEntity(UUID id, String code, String name, String description, Boolean active,
-                       Integer minQuantity, Integer maxQuantity,
-                       Instant createdAt, Instant updatedAt) {
+    public TenantEntity(UUID id, String code, String name, Boolean active, 
+                       BigDecimal creditBalance, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.code = code;
         this.name = name;
-        this.description = description;
         this.active = active;
-        this.minQuantity = minQuantity;
-        this.maxQuantity = maxQuantity;
+        this.creditBalance = creditBalance;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -88,12 +83,12 @@ public class ServiceEntity {
         this.name = name;
     }
 
-    public String getDescription() {
-        return description;
+    public String getContactEmail() {
+        return contactEmail;
     }
 
-    public void setDescription(String description) {
-        this.description = description;
+    public void setContactEmail(String contactEmail) {
+        this.contactEmail = contactEmail;
     }
 
     public Boolean getActive() {
@@ -104,20 +99,12 @@ public class ServiceEntity {
         this.active = active;
     }
 
-    public Integer getMinQuantity() {
-        return minQuantity;
+    public BigDecimal getCreditBalance() {
+        return creditBalance;
     }
 
-    public void setMinQuantity(Integer minQuantity) {
-        this.minQuantity = minQuantity;
-    }
-
-    public Integer getMaxQuantity() {
-        return maxQuantity;
-    }
-
-    public void setMaxQuantity(Integer maxQuantity) {
-        this.maxQuantity = maxQuantity;
+    public void setCreditBalance(BigDecimal creditBalance) {
+        this.creditBalance = creditBalance;
     }
 
     public Instant getCreatedAt() {
@@ -138,13 +125,12 @@ public class ServiceEntity {
 
     @Override
     public String toString() {
-        return "ServiceEntity{" +
+        return "TenantEntity{" +
                 "id=" + id +
                 ", code='" + code + '\'' +
                 ", name='" + name + '\'' +
                 ", active=" + active +
-                ", minQuantity=" + minQuantity +
-                ", maxQuantity=" + maxQuantity +
+                ", creditBalance=" + creditBalance +
                 ", createdAt=" + createdAt +
                 '}';
     }

@@ -50,23 +50,28 @@ spring:
     allow-bean-definition-overriding: true
 
   # ==========================================================================
-  # LOCAL POSTGRESQL (docker-compose.test-db.yml or docker-compose.local.yml)
+  # H2 IN-MEMORY DATABASE (configured via R2dbcConfiguration.java)
   # ==========================================================================
-  # Start DB first: docker compose -f docker-compose.test-db.yml up -d
-  # Then run app:   mvn spring-boot:run -Dspring.profiles.active=local
+  # No Docker needed! H2 starts instantly in-memory.
+  # Perfect for local development and quick testing.
+  # 
+  # Configuration is handled in: R2dbcConfiguration.java
+  # R2DBC connection pool: 5 initial, 10 max
+  #
+  # NOTE: Data is lost on app restart (part of in-memory design).
 
   r2dbc:
-    url: r2dbc:postgresql://localhost:55432/goodfellaz17_test
-    username: testuser
-    password: testpass
-    pool:
-      initial-size: 2
-      max-size: 10
+    initialization-mode: always
 
-  # SQL initialization - schema created by init.sql in Docker entrypoint
   sql:
     init:
-      mode: never  # Schema handled by Docker init script
+      mode: always
+      data-locations: classpath:schema.sql
+
+  # Flyway is disabled for H2 (migrations are PostgreSQL-specific)
+  # Instead, use schema.sql for local development
+  flyway:
+    enabled: false
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # LOGGING CONFIGURATION

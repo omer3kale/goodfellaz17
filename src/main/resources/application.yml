@@ -186,6 +186,13 @@ app:
     batch-size: ${APP_SCHEDULER_BATCH_SIZE:10}  # Tasks per poll cycle
     concurrency: ${APP_SCHEDULER_CONCURRENCY:5}  # Parallel execution threads
 
+  # CrawlerEngine Configuration (FTL0.2)
+  crawler:
+    adapter: ${APP_CRAWLER_ADAPTER:local}  # "local" or "cloudflare"
+    cloudflare:
+      account-id: ${CF_ACCOUNT_ID:}
+      api-token: ${CF_API_TOKEN:}
+
 # SpringDoc OpenAPI / Swagger
 springdoc:
   swagger-ui:

@@ -1,0 +1,66 @@
+# ============================================================================
+# MSSQL Profile Configuration
+# ============================================================================
+# Activation: mvn spring-boot:run -Dspring-boot.run.arguments='--spring.profiles.active=mssql'
+#         or: SPRING_PROFILES_ACTIVE=mssql java -jar app.jar
+#         or: In IDE, set Active Profiles to "mssql"
+# 
+# Prerequisites:
+# - MSSQL Server 2019+ (Docker or local install)
+# - Update connection details below for your environment
+# ============================================================================
+
+spring:
+  profiles:
+    active: mssql
+
+  application:
+    name: goodfellaz17-provider
+
+  # MSSQL R2DBC Configuration
+  r2dbc:
+    # Local Docker MSSQL (docker-compose.test-db.yml expected)
+    url: r2dbc:mssql://localhost:1433;database=goodfellaz17
+    username: sa
+    password: YourStrong@Passw0rd
+    # Connection pool settings
+    pool:
+      initial-size: 10
+      max-size: 20
+      max-idle-time: PT30M
+      validation-query: "SELECT 1"
+
+  # SQL initialization (Flyway manages migrations)
+  sql:
+    init:
+      mode: never  # Flyway V15+ handles schema creation
+
+# Database initialization logging (optional)
+logging:
+  level:
+    org.springframework.r2dbc: DEBUG
+    org.springframework.data.r2dbc: DEBUG
+
+---
+# MSSQL Production Profile (Azure SQL Database)
+spring:
+  config:
+    activate:
+      on-profile: mssql-prod
+
+  r2dbc:
+    # Azure SQL Database endpoint
+    # Format: r2dbc:mssql://[server].[database].windows.net:1433;database=[dbname];encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.database.windows.net
+    url: ${MSSQL_R2DBC_URL:r2dbc:mssql://localhost:1433;database=goodfellaz17}
+    username: ${MSSQL_USERNAME:sa}
+    password: ${MSSQL_PASSWORD:YourStrong@Passw0rd}
+    pool:
+      initial-size: 20
+      max-size: 50
+      max-idle-time: PT10M
+      validation-query: "SELECT 1"
+
+logging:
+  level:
+    org.springframework.r2dbc: INFO
+    org.springframework.data.r2dbc: INFO

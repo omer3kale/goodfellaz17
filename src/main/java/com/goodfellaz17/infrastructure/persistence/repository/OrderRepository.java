@@ -1,177 +1,59 @@
 package com.goodfellaz17.infrastructure.persistence.repository;
 
 import com.goodfellaz17.infrastructure.persistence.entity.OrderEntity;
-import org.springframework.data.r2dbc.repository.Modifying;
 import org.springframework.data.r2dbc.repository.Query;
 import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.math.BigDecimal;
 import java.util.UUID;
 
 /**
- * Order Repository - Order tracking.
- * R2DBC reactive repository for orders table.
+ * OrderRepository — R2DBC reactive repository for orders table (V15 MSSQL schema).
+ * Handles CRUD + custom queries for Order aggregates.
  */
 @Repository
 public interface OrderRepository extends ReactiveCrudRepository<OrderEntity, UUID> {
 
     /**
-     * Find orders by API key.
+     * Find all orders for a tenant.
      */
-    Flux<OrderEntity> findByApiKey(String apiKey);
+    Flux<OrderEntity> findByTenantId(UUID tenantId);
 
     /**
-     * Find orders by API key ordered by updated_at DESC.
+     * Count orders for a tenant.
      */
-    @Query("SELECT * FROM orders WHERE api_key = :apiKey ORDER BY updated_at DESC")
-    Flux<OrderEntity> findByApiKeyOrderByUpdatedAtDesc(String apiKey);
+    Mono<Long> countByTenantId(UUID tenantId);
 
     /**
-     * Find recent orders by API key (limit N).
-     */
-    @Query("SELECT * FROM orders WHERE api_key = :apiKey ORDER BY updated_at DESC LIMIT :limit")
-    Flux<OrderEntity> findRecentByApiKey(String apiKey, int limit);
-
-    /**
-     * Count active orders (Pending/Processing) by API key.
-     */
-    @Query("SELECT COUNT(*) FROM orders WHERE api_key = :apiKey AND status IN ('Pending', 'Processing')")
-    Mono<Long> countActiveByApiKey(String apiKey);
-
-    /**
-     * Find orders by status.
+     * Find orders by status (PENDING, ACTIVE, DELIVERING, COMPLETED, FAILED).
      */
     Flux<OrderEntity> findByStatus(String status);
 
     /**
-     * Find refundable failed orders.
+     * Count orders by status.
      */
-    @Query("SELECT * FROM orders WHERE status = 'Failed'")
-    Flux<OrderEntity> findRefundableFailures();
+    Mono<Long> countByStatus(String status);
 
     /**
-     * Update order status.
+     * Find orders by service.
      */
-    @Modifying
-    @Query("UPDATE orders SET status = :status, updated_at = NOW() WHERE order_id = :orderId")
-    Mono<Integer> updateStatus(UUID orderId, String status);
+    Flux<OrderEntity> findByServiceId(UUID serviceId);
 
     /**
-     * Update order progress.
+     * Count orders by service.
      */
-    @Modifying
-    @Query("""
-        UPDATE orders SET
-            charged_count = :deliveredQuantity,
-            remaining_count = quantity - :deliveredQuantity,
-            updated_at = NOW()
-        WHERE order_id = :orderId
-        """)
-    Mono<Integer> updateProgress(UUID orderId, int progress, int deliveredQuantity);
+    Mono<Long> countByServiceId(UUID serviceId);
 
     /**
-     * Complete order.
+     * Find pending orders (status = 'PENDING') for background executor.
      */
-    @Modifying
-    @Query("""
-        UPDATE orders SET
-            status = 'Completed',
-            charged_count = quantity,
-            remaining_count = 0,
-            updated_at = NOW()
-        WHERE order_id = :orderId
-        """)
-    Mono<Integer> completeOrder(UUID orderId);
+    @Query("SELECT * FROM orders WHERE status = 'PENDING' ORDER BY created_at ASC")
+    Flux<OrderEntity> findPendingOrders();
 
     /**
-     * Mark order as refunded.
+     * Find orders created by a specific API key.
      */
-    @Modifying
-    @Query("UPDATE orders SET status = 'Refunded', updated_at = NOW() WHERE order_id = :orderId")
-    Mono<Integer> markRefunded(UUID orderId);
-
-    // ==================== ADMIN STATS ====================
-
-    /**
-     * Total revenue (all time).
-     */
-    @Query("SELECT COALESCE(SUM(charged), 0) FROM orders WHERE status IN ('Completed', 'Processing')")
-    Mono<BigDecimal> totalRevenue();
-
-    /**
-     * Revenue last 30 days.
-     */
-    @Query("SELECT COALESCE(SUM(charged), 0) FROM orders WHERE status IN ('Completed', 'Processing') AND created_at > NOW() - INTERVAL '30 days'")
-    Mono<BigDecimal> revenueLast30Days();
-
-    /**
-     * Revenue today.
-     */
-    @Query("SELECT COALESCE(SUM(charged), 0) FROM orders WHERE status IN ('Completed', 'Processing') AND created_at > NOW() - INTERVAL '1 day'")
-    Mono<BigDecimal> revenueToday();
-
-    /**
-     * Order count today.
-     */
-    @Query("SELECT COUNT(*) FROM orders WHERE created_at > NOW() - INTERVAL '1 day'")
-    Mono<Long> ordersToday();
-
-    /**
-     * Active orders (Pending/Processing).
-     */
-    @Query("SELECT COUNT(*) FROM orders WHERE status IN ('Pending', 'Processing')")
-    Mono<Long> activeOrderCount();
-
-    /**
-     * Completed orders count.
-     */
-    @Query("SELECT COUNT(*) FROM orders WHERE status = 'Completed'")
-    Mono<Long> completedOrderCount();
-
-    /**
-     * Total plays delivered (sum of charged_count across all orders).
-     */
-    @Query("SELECT COALESCE(SUM(charged_count), 0) FROM orders")
-    Mono<Integer> totalDelivered();
-
-    /**
-     * Orders completed within 24h (estimate based on eta_minutes).
-     */
-    @Query("""
-        SELECT COUNT(*) FROM orders
-        WHERE status = 'Completed'
-        AND eta_minutes IS NOT NULL
-        AND eta_minutes < 1440
-        """)
-    Mono<Long> ordersCompletedWithin24h();
-
-    /**
-     * Top service IDs by order count.
-     * Returns service_id and order count for top N services.
-     */
-    @Query("""
-        SELECT service_id, COUNT(*) as order_count
-        FROM orders
-        WHERE status IN ('Completed', 'Processing')
-        GROUP BY service_id
-        ORDER BY order_count DESC
-        LIMIT :limit
-        """)
-    Flux<ServiceOrderCount> topServicesByOrderCount(int limit);
-
-    /**
-     * Projection interface for service order count results.
-     */
-    interface ServiceOrderCount {
-        Integer getServiceId();
-        Long getOrderCount();
-    }
-
-    // ==================== ATOMIC DELIVERY UPDATE ====================
-    // NOTE: Atomic increment operations moved to OrderProgressUpdater service
-    // because Spring Data R2DBC @Query doesn't support RETURNING or @Modifying well.
-    // See: OrderProgressUpdater.atomicIncrementDelivered() and atomicIncrementFailedPermanent()
+    Flux<OrderEntity> findByCreatedByApiKeyId(UUID apiKeyId);
 }

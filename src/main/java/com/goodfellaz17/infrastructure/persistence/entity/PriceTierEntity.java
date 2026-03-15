@@ -4,38 +4,43 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Service Entity (MSSQL) — Maps to services table.
+ * PriceTier Entity (MSSQL) — Maps to price_tiers table.
  * 
- * Represents a delivery service type (PLAYS, FOLLOWERS, ENGAGEMENT, etc.).
+ * Represents a tiered pricing level for a specific service.
+ * Example: SPOTIFY_PLAYS service with tier "Standard" at $0.13 per 1000 plays.
  */
-@Table("services")
-public class ServiceEntity {
+@Table("price_tiers")
+public class PriceTierEntity {
 
     @Id
     @Column("id")
     private UUID id;
 
-    @Column("code")
-    private String code;
+    @Column("service_id")
+    private UUID serviceId;
 
-    @Column("name")
-    private String name;
+    @Column("tier_name")
+    private String tierName;
 
-    @Column("description")
-    private String description;
+    @Column("unit_cost")
+    private BigDecimal unitCost;
 
-    @Column("active")
-    private Boolean active;
+    @Column("quantity_step")
+    private Integer quantityStep;
 
     @Column("min_quantity")
     private Integer minQuantity;
 
     @Column("max_quantity")
     private Integer maxQuantity;
+
+    @Column("active")
+    private Boolean active;
 
     @Column("created_at")
     private Instant createdAt;
@@ -45,19 +50,20 @@ public class ServiceEntity {
 
     // ── Constructors ────────────────────────────────────
 
-    public ServiceEntity() {
+    public PriceTierEntity() {
     }
 
-    public ServiceEntity(UUID id, String code, String name, String description, Boolean active,
-                       Integer minQuantity, Integer maxQuantity,
-                       Instant createdAt, Instant updatedAt) {
+    public PriceTierEntity(UUID id, UUID serviceId, String tierName, BigDecimal unitCost,
+                          Integer quantityStep, Integer minQuantity, Integer maxQuantity,
+                          Boolean active, Instant createdAt, Instant updatedAt) {
         this.id = id;
-        this.code = code;
-        this.name = name;
-        this.description = description;
-        this.active = active;
+        this.serviceId = serviceId;
+        this.tierName = tierName;
+        this.unitCost = unitCost;
+        this.quantityStep = quantityStep;
         this.minQuantity = minQuantity;
         this.maxQuantity = maxQuantity;
+        this.active = active;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -72,36 +78,36 @@ public class ServiceEntity {
         this.id = id;
     }
 
-    public String getCode() {
-        return code;
+    public UUID getServiceId() {
+        return serviceId;
     }
 
-    public void setCode(String code) {
-        this.code = code;
+    public void setServiceId(UUID serviceId) {
+        this.serviceId = serviceId;
     }
 
-    public String getName() {
-        return name;
+    public String getTierName() {
+        return tierName;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setTierName(String tierName) {
+        this.tierName = tierName;
     }
 
-    public String getDescription() {
-        return description;
+    public BigDecimal getUnitCost() {
+        return unitCost;
     }
 
-    public void setDescription(String description) {
-        this.description = description;
+    public void setUnitCost(BigDecimal unitCost) {
+        this.unitCost = unitCost;
     }
 
-    public Boolean getActive() {
-        return active;
+    public Integer getQuantityStep() {
+        return quantityStep;
     }
 
-    public void setActive(Boolean active) {
-        this.active = active;
+    public void setQuantityStep(Integer quantityStep) {
+        this.quantityStep = quantityStep;
     }
 
     public Integer getMinQuantity() {
@@ -118,6 +124,14 @@ public class ServiceEntity {
 
     public void setMaxQuantity(Integer maxQuantity) {
         this.maxQuantity = maxQuantity;
+    }
+
+    public Boolean getActive() {
+        return active;
+    }
+
+    public void setActive(Boolean active) {
+        this.active = active;
     }
 
     public Instant getCreatedAt() {
@@ -138,13 +152,15 @@ public class ServiceEntity {
 
     @Override
     public String toString() {
-        return "ServiceEntity{" +
+        return "PriceTierEntity{" +
                 "id=" + id +
-                ", code='" + code + '\'' +
-                ", name='" + name + '\'' +
-                ", active=" + active +
+                ", serviceId=" + serviceId +
+                ", tierName='" + tierName + '\'' +
+                ", unitCost=" + unitCost +
+                ", quantityStep=" + quantityStep +
                 ", minQuantity=" + minQuantity +
                 ", maxQuantity=" + maxQuantity +
+                ", active=" + active +
                 ", createdAt=" + createdAt +
                 '}';
     }

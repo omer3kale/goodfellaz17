@@ -68,15 +68,20 @@
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
 
-        <!-- R2DBC PostgreSQL -->
+        <!-- R2DBC MSSQL Server -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-r2dbc</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>r2dbc-postgresql</artifactId>
-            <!-- runtime scope causes auto-config to not detect it during spring-boot:run -->
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>12.4.2.jre17</version>
+        </dependency>
+        <dependency>
+            <groupId>io.r2dbc</groupId>
+            <artifactId>r2dbc-mssql</artifactId>
+            <version>1.0.1.RELEASE</version>
         </dependency>
         <!-- R2DBC SPI (needed for auto-configuration detection) -->
         <dependency>
@@ -167,7 +172,7 @@
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>postgresql</artifactId>
+            <artifactId>mssqlserver</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -175,10 +180,11 @@
             <artifactId>r2dbc</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- PostgreSQL JDBC Driver for Testcontainers init script -->
+        <!-- MSSQL JDBC Driver for Testcontainers init script -->
         <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>12.4.2.jre17</version>
             <scope>test</scope>
         </dependency>
         <!-- Spring Boot Testcontainers Integration -->
